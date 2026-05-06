@@ -20,6 +20,17 @@
   "darkTheme": "ダーク",
   "appTracking": "アプリ追跡",
   "appTrackingDescription": "クラッシュレポートとパフォーマンストレースを共有して、アプリの改善に役立てます。",
+  "autoUpdateCheck": "自動アップデート確認",
+  "autoUpdateCheckDescription": "アプリ起動時に GitHub Releases を確認します。",
+  "updateAvailableTitle": "新しいバージョンがあります",
+  "updateAvailableMessage": "バージョン {version} が利用できます。GitHub Releases を開いてダウンロードしますか？",
+  "@updateAvailableMessage": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "downloadUpdate": "ダウンロード",
+  "notNow": "後で",
   "english": "英語",
   "chinese": "中国語",
   "japanese": "日本語",

@@ -70,6 +70,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'Share crash reports and performance traces to help improve the app.';
 
   @override
+  String get autoUpdateCheck => 'Automatic Update Check';
+
+  @override
+  String get autoUpdateCheckDescription =>
+      'Check GitHub Releases when the app opens.';
+
+  @override
+  String get updateAvailableTitle => 'Update Available';
+
+  @override
+  String updateAvailableMessage(Object version) {
+    return 'Version $version is available. Open GitHub Releases to download it?';
+  }
+
+  @override
+  String get downloadUpdate => 'Download';
+
+  @override
+  String get notNow => 'Not Now';
+
+  @override
   String get english => 'English';
 
   @override

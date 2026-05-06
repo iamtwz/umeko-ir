@@ -70,6 +70,26 @@ class AppLocalizationsJa extends AppLocalizations {
       'クラッシュレポートとパフォーマンストレースを共有して、アプリの改善に役立てます。';
 
   @override
+  String get autoUpdateCheck => '自動アップデート確認';
+
+  @override
+  String get autoUpdateCheckDescription => 'アプリ起動時に GitHub Releases を確認します。';
+
+  @override
+  String get updateAvailableTitle => '新しいバージョンがあります';
+
+  @override
+  String updateAvailableMessage(Object version) {
+    return 'バージョン $version が利用できます。GitHub Releases を開いてダウンロードしますか？';
+  }
+
+  @override
+  String get downloadUpdate => 'ダウンロード';
+
+  @override
+  String get notNow => '後で';
+
+  @override
   String get english => '英語';
 
   @override

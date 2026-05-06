@@ -220,6 +220,42 @@ abstract class AppLocalizations {
   /// **'Share crash reports and performance traces to help improve the app.'**
   String get appTrackingDescription;
 
+  /// No description provided for @autoUpdateCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic Update Check'**
+  String get autoUpdateCheck;
+
+  /// No description provided for @autoUpdateCheckDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check GitHub Releases when the app opens.'**
+  String get autoUpdateCheckDescription;
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Available'**
+  String get updateAvailableTitle;
+
+  /// No description provided for @updateAvailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is available. Open GitHub Releases to download it?'**
+  String updateAvailableMessage(Object version);
+
+  /// No description provided for @downloadUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get downloadUpdate;
+
+  /// No description provided for @notNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Now'**
+  String get notNow;
+
   /// No description provided for @english.
   ///
   /// In en, this message translates to:

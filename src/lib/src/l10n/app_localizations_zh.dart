@@ -69,6 +69,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTrackingDescription => '分享崩溃报告和性能追踪，帮助改进应用。';
 
   @override
+  String get autoUpdateCheck => '自动检查更新';
+
+  @override
+  String get autoUpdateCheckDescription => 'App 打开时检查 GitHub Releases。';
+
+  @override
+  String get updateAvailableTitle => '发现新版本';
+
+  @override
+  String updateAvailableMessage(Object version) {
+    return '版本 $version 已可用。要打开 GitHub Releases 下载吗？';
+  }
+
+  @override
+  String get downloadUpdate => '下载';
+
+  @override
+  String get notNow => '稍后';
+
+  @override
   String get english => '英语';
 
   @override

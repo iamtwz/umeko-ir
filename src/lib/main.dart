@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'src/application/app_settings_controller.dart';
 import 'src/application/sentry_service.dart';
 import 'src/application/thermal_controller.dart';
+import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
 import 'src/core/thermal_rendering.dart';
 import 'src/l10n/app_localizations.dart';
@@ -94,13 +98,24 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
+  bool _updateCheckStarted = false;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(thermalControllerProvider);
+    final settings = ref.watch(appSettingsProvider);
     final controller = ref.read(thermalControllerProvider.notifier);
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final l10n = context.l10n;
+
+    if (settings.loaded &&
+        settings.autoUpdateCheckEnabled &&
+        !_updateCheckStarted) {
+      _updateCheckStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_checkForUpdates());
+      });
+    }
 
     final content = switch (_index) {
       0 => LivePane(state: state, controller: controller),
@@ -193,6 +208,38 @@ class _AppShellState extends ConsumerState<AppShell> {
               ],
             ),
     );
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final packageInfo = await ref.read(packageInfoProvider.future);
+      final update = await checkForUpdate(currentVersion: packageInfo.version);
+      if (!mounted || update == null) return;
+
+      final l10n = context.l10n;
+      final openDownload = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.updateAvailableTitle),
+          content: Text(l10n.updateAvailableMessage(update.version)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.notNow),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.downloadUpdate),
+            ),
+          ],
+        ),
+      );
+      if (openDownload == true) {
+        await launchUrl(update.htmlUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Update check failed: $error\n$stackTrace');
+    }
   }
 }
 
@@ -1115,6 +1162,14 @@ class AppSettingsPane extends ConsumerWidget {
                   subtitle: Text(l10n.appTrackingDescription),
                   value: settings.appTrackingEnabled,
                   onChanged: controller.setAppTrackingEnabled,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.system_update_alt),
+                  title: Text(l10n.autoUpdateCheck),
+                  subtitle: Text(l10n.autoUpdateCheckDescription),
+                  value: settings.autoUpdateCheckEnabled,
+                  onChanged: controller.setAutoUpdateCheckEnabled,
                 ),
               ],
             ),

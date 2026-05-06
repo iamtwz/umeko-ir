@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'sentry_service.dart';
 
 const appTrackingEnabledPreferenceKey = 'app.trackingEnabled';
+const autoUpdateCheckEnabledPreferenceKey = 'app.autoUpdateCheckEnabled';
 
 final appSettingsProvider =
     NotifierProvider<AppSettingsController, AppSettingsState>(
@@ -59,11 +60,15 @@ class AppSettingsState {
     this.language = AppLanguage.system,
     this.theme = AppThemePreference.system,
     this.appTrackingEnabled = true,
+    this.autoUpdateCheckEnabled = true,
+    this.loaded = false,
   });
 
   final AppLanguage language;
   final AppThemePreference theme;
   final bool appTrackingEnabled;
+  final bool autoUpdateCheckEnabled;
+  final bool loaded;
 
   Locale? get locale => language.locale;
   ThemeMode get themeMode => theme.themeMode;
@@ -72,11 +77,16 @@ class AppSettingsState {
     AppLanguage? language,
     AppThemePreference? theme,
     bool? appTrackingEnabled,
+    bool? autoUpdateCheckEnabled,
+    bool? loaded,
   }) {
     return AppSettingsState(
       language: language ?? this.language,
       theme: theme ?? this.theme,
       appTrackingEnabled: appTrackingEnabled ?? this.appTrackingEnabled,
+      autoUpdateCheckEnabled:
+          autoUpdateCheckEnabled ?? this.autoUpdateCheckEnabled,
+      loaded: loaded ?? this.loaded,
     );
   }
 }
@@ -118,15 +128,24 @@ class AppSettingsController extends Notifier<AppSettingsState> {
     await configureSentry(enabled: enabled);
   }
 
+  Future<void> setAutoUpdateCheckEnabled(bool enabled) async {
+    state = state.copyWith(autoUpdateCheckEnabled: enabled);
+    await _preferences.setBool(autoUpdateCheckEnabledPreferenceKey, enabled);
+  }
+
   Future<void> _load() async {
     final code = await _preferences.getString(_languageKey);
     final themeCode = await _preferences.getString(_themeKey);
     final appTrackingEnabled =
         await _preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
+    final autoUpdateCheckEnabled =
+        await _preferences.getBool(autoUpdateCheckEnabledPreferenceKey) ?? true;
     state = state.copyWith(
       language: AppLanguage.fromCode(code),
       theme: AppThemePreference.fromCode(themeCode),
       appTrackingEnabled: appTrackingEnabled,
+      autoUpdateCheckEnabled: autoUpdateCheckEnabled,
+      loaded: true,
     );
   }
 }

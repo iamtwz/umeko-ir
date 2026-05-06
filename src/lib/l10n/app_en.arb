@@ -20,6 +20,17 @@
   "darkTheme": "Dark",
   "appTracking": "App Tracking",
   "appTrackingDescription": "Share crash reports and performance traces to help improve the app.",
+  "autoUpdateCheck": "Automatic Update Check",
+  "autoUpdateCheckDescription": "Check GitHub Releases when the app opens.",
+  "updateAvailableTitle": "Update Available",
+  "updateAvailableMessage": "Version {version} is available. Open GitHub Releases to download it?",
+  "@updateAvailableMessage": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "downloadUpdate": "Download",
+  "notNow": "Not Now",
   "english": "English",
   "chinese": "Chinese",
   "japanese": "Japanese",
