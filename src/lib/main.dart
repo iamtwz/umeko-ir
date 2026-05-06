@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/application/app_settings_controller.dart';
+import 'src/application/sentry_service.dart';
 import 'src/application/thermal_controller.dart';
 import 'src/core/device_gallery.dart';
 import 'src/core/thermal_rendering.dart';
@@ -14,8 +17,15 @@ import 'src/ui/thermal_raster_view.dart';
 const _monoFontFamily = 'Menlo';
 const _monoFontFallback = ['SF Mono', 'Monaco', 'Courier New', 'Courier'];
 
-void main() {
-  runApp(const ProviderScope(child: UmekoIrApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final preferences = SharedPreferencesAsync();
+  final appTrackingEnabled =
+      await preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
+  await configureSentry(
+    enabled: appTrackingEnabled,
+    appRunner: () => runApp(const ProviderScope(child: UmekoIrApp())),
+  );
 }
 
 class UmekoIrApp extends ConsumerWidget {
@@ -38,6 +48,9 @@ class UmekoIrApp extends ConsumerWidget {
       themeMode: settings.themeMode,
       theme: _buildAppTheme(Brightness.light),
       darkTheme: _buildAppTheme(Brightness.dark),
+      navigatorObservers: settings.appTrackingEnabled && isSentryConfigured
+          ? [SentryNavigatorObserver()]
+          : const [],
       home: const AppShell(),
     );
   }
@@ -1093,6 +1106,15 @@ class AppSettingsPane extends ConsumerWidget {
                   onChanged: (value) {
                     if (value != null) controller.setTheme(value);
                   },
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.analytics_outlined),
+                  title: Text(l10n.appTracking),
+                  subtitle: Text(l10n.appTrackingDescription),
+                  value: settings.appTrackingEnabled,
+                  onChanged: controller.setAppTrackingEnabled,
                 ),
               ],
             ),

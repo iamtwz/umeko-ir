@@ -18,6 +18,8 @@
   "systemTheme": "跟随系统",
   "lightTheme": "浅色",
   "darkTheme": "深色",
+  "appTracking": "App 追踪",
+  "appTrackingDescription": "分享崩溃报告和性能追踪，帮助改进应用。",
   "english": "英语",
   "chinese": "中文",
   "japanese": "日语",

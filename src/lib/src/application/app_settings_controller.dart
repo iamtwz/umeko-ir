@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'sentry_service.dart';
+
+const appTrackingEnabledPreferenceKey = 'app.trackingEnabled';
+
 final appSettingsProvider =
     NotifierProvider<AppSettingsController, AppSettingsState>(
       AppSettingsController.new,
@@ -54,10 +58,12 @@ class AppSettingsState {
   const AppSettingsState({
     this.language = AppLanguage.system,
     this.theme = AppThemePreference.system,
+    this.appTrackingEnabled = true,
   });
 
   final AppLanguage language;
   final AppThemePreference theme;
+  final bool appTrackingEnabled;
 
   Locale? get locale => language.locale;
   ThemeMode get themeMode => theme.themeMode;
@@ -65,10 +71,12 @@ class AppSettingsState {
   AppSettingsState copyWith({
     AppLanguage? language,
     AppThemePreference? theme,
+    bool? appTrackingEnabled,
   }) {
     return AppSettingsState(
       language: language ?? this.language,
       theme: theme ?? this.theme,
+      appTrackingEnabled: appTrackingEnabled ?? this.appTrackingEnabled,
     );
   }
 }
@@ -104,12 +112,21 @@ class AppSettingsController extends Notifier<AppSettingsState> {
     }
   }
 
+  Future<void> setAppTrackingEnabled(bool enabled) async {
+    state = state.copyWith(appTrackingEnabled: enabled);
+    await _preferences.setBool(appTrackingEnabledPreferenceKey, enabled);
+    await configureSentry(enabled: enabled);
+  }
+
   Future<void> _load() async {
     final code = await _preferences.getString(_languageKey);
     final themeCode = await _preferences.getString(_themeKey);
+    final appTrackingEnabled =
+        await _preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
     state = state.copyWith(
       language: AppLanguage.fromCode(code),
       theme: AppThemePreference.fromCode(themeCode),
+      appTrackingEnabled: appTrackingEnabled,
     );
   }
 }

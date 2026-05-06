@@ -63,6 +63,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get darkTheme => '深色';
 
   @override
+  String get appTracking => 'App 追踪';
+
+  @override
+  String get appTrackingDescription => '分享崩溃报告和性能追踪，帮助改进应用。';
+
+  @override
   String get english => '英语';
 
   @override

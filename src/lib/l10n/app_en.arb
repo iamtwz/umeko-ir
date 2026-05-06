@@ -18,6 +18,8 @@
   "systemTheme": "System",
   "lightTheme": "Light",
   "darkTheme": "Dark",
+  "appTracking": "App Tracking",
+  "appTrackingDescription": "Share crash reports and performance traces to help improve the app.",
   "english": "English",
   "chinese": "Chinese",
   "japanese": "Japanese",

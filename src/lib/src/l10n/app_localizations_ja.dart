@@ -63,6 +63,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get darkTheme => 'ダーク';
 
   @override
+  String get appTracking => 'アプリ追跡';
+
+  @override
+  String get appTrackingDescription =>
+      'クラッシュレポートとパフォーマンストレースを共有して、アプリの改善に役立てます。';
+
+  @override
   String get english => '英語';
 
   @override

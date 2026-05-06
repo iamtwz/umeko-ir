@@ -18,6 +18,8 @@
   "systemTheme": "システム",
   "lightTheme": "ライト",
   "darkTheme": "ダーク",
+  "appTracking": "アプリ追跡",
+  "appTrackingDescription": "クラッシュレポートとパフォーマンストレースを共有して、アプリの改善に役立てます。",
   "english": "英語",
   "chinese": "中国語",
   "japanese": "日本語",

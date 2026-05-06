@@ -208,6 +208,18 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get darkTheme;
 
+  /// No description provided for @appTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'App Tracking'**
+  String get appTracking;
+
+  /// No description provided for @appTrackingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Share crash reports and performance traces to help improve the app.'**
+  String get appTrackingDescription;
+
   /// No description provided for @english.
   ///
   /// In en, this message translates to:
