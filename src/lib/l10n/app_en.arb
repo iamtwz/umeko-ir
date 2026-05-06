@@ -1,0 +1,99 @@
+{
+  "@@locale": "en",
+  "appTitle": "Umeko IR",
+  "live": "Live",
+  "gallery": "Gallery",
+  "debug": "Debug",
+  "connected": "Connected",
+  "disconnected": "Disconnected",
+  "connect": "Connect",
+  "disconnect": "Disconnect",
+  "refreshPorts": "Refresh ports",
+  "settings": "Settings",
+  "deviceSettings": "Device Settings",
+  "appSettings": "App Settings",
+  "language": "Language",
+  "theme": "Theme",
+  "systemLanguage": "System",
+  "systemTheme": "System",
+  "lightTheme": "Light",
+  "darkTheme": "Dark",
+  "english": "English",
+  "chinese": "Chinese",
+  "japanese": "Japanese",
+  "about": "About",
+  "aboutAppDescription": "Cross-platform thermal imaging viewer for Umeko IR devices.",
+  "version": "Version {version}",
+  "@version": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "licenses": "Licenses",
+  "serialPort": "Serial port",
+  "chooseSerialPort": "Choose serial port",
+  "noSerialPorts": "No serial ports",
+  "dismiss": "Dismiss",
+  "noFrame": "No frame",
+  "connectAndStartStream": "Connect and start stream",
+  "noFormat": "No format",
+  "packets": "Packets {count}",
+  "@packets": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "packetsMetric": "Packets",
+  "readDevice": "Read device",
+  "clearDevice": "Clear device",
+  "deviceFiles": "{count} files",
+  "@deviceFiles": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "noDevicePhotos": "No device photos",
+  "readDeviceFiles": "Read device files to populate this view",
+  "delete": "Delete",
+  "photoStats": "{width}x{height}  Max {max} C  Min {min} C",
+  "@photoStats": {
+    "placeholders": {
+      "width": {},
+      "height": {},
+      "max": {},
+      "min": {}
+    }
+  },
+  "startStream": "Start Stream",
+  "stopStream": "Stop Stream",
+  "colorMap": "Color Map",
+  "filter": "Filter",
+  "bilinear": "Bilinear",
+  "horizontalFlip": "Horizontal Flip",
+  "verticalFlip": "Vertical Flip",
+  "received": "Received",
+  "format": "Format",
+  "bitrate": "Bitrate",
+  "disconnectBeforeBitrate": "Disconnect before changing bitrate.",
+  "defaultFirmwareBitrate": "Default firmware setting is 115200.",
+  "serialDebug": "Serial Debug",
+  "clear": "Clear",
+  "clearDevicePhotosTitle": "Clear device photos?",
+  "clearDevicePhotosMessage": "This deletes all thermal image files stored on the device. This action cannot be undone.",
+  "cancel": "Cancel",
+  "close": "Close",
+  "colorMapIronbow": "Ironbow",
+  "colorMapRainbow": "Rainbow",
+  "colorMapGrayscale": "Grayscale",
+  "colorMapBlackHot": "Black Hot",
+  "colorMapHot": "Hot",
+  "colorMapInferno": "Inferno",
+  "colorMapPlasma": "Plasma",
+  "colorMapJet": "Jet",
+  "colorMapCool": "Cool",
+  "filterNone": "None",
+  "filterGaussian": "Gaussian",
+  "filterSharpen": "Sharpen",
+  "filterSobel": "Sobel",
+  "filterEmboss": "Emboss"
+}

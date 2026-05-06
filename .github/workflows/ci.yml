@@ -1,0 +1,69 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Analyze and test
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: web
+            os: ubuntu-latest
+            command: flutter build web --release
+            artifact: src/build/web
+          - target: macos
+            os: macos-latest
+            command: flutter build macos --release
+            artifact: src/build/macos/Build/Products/Release
+          - target: linux
+            os: ubuntu-latest
+            command: flutter build linux --release
+            artifact: src/build/linux/x64/release/bundle
+          - target: windows
+            os: windows-latest
+            command: flutter build windows --release
+            artifact: src/build/windows/x64/runner/Release
+          - target: android
+            os: ubuntu-latest
+            command: flutter build apk --release
+            artifact: src/build/app/outputs/flutter-apk
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: umeko-ir-${{ matrix.target }}
+          path: ${{ matrix.artifact }}
