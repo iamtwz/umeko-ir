@@ -63,6 +63,29 @@ This app is designed for hardware built from the [umeiko/RP2040-MLX90640-touchsc
 
 The default bitrate is `115200`. You can change it from Device Settings when disconnected.
 
+## macOS Unsigned App
+
+Development builds and early release builds may be unsigned. macOS Gatekeeper may show a warning such as "Apple could not verify" or block the app on first launch.
+
+Try the normal override first:
+
+1. Open Finder.
+2. Right-click `Umeko IR.app`.
+3. Choose **Open**.
+4. Confirm **Open** in the warning dialog.
+
+If the app was downloaded from the internet and still cannot be opened, remove the quarantine attribute:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Umeko IR.app"
+```
+
+If the app is in another folder, replace the path with the actual `.app` path:
+
+```bash
+xattr -dr com.apple.quarantine "/path/to/Umeko IR.app"
+```
+
 ## Development
 
 ```bash
