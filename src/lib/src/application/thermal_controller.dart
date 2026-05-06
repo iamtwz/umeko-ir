@@ -436,6 +436,7 @@ class ThermalController extends Notifier<ThermalState> {
     for (final port in ports) {
       if (_isPreferredPort(port)) return port;
     }
+    if (ports.length == 1 && ports.single.virtual) return ports.single;
     return null;
   }
 }

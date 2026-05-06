@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 
 import 'serial_adapter.dart';
+import 'serial_metadata.dart';
 
 class LibSerialPortAdapter implements SerialAdapter {
   SerialPort? _port;
@@ -26,20 +27,34 @@ class LibSerialPortAdapter implements SerialAdapter {
       return SerialPortDescriptor(
         id: name,
         label: name,
-        description: metadata.description,
+        description: buildSerialPortDescription(
+          description: metadata.description,
+          manufacturer: metadata.manufacturer,
+          productName: metadata.productName,
+          vendorId: metadata.vendorId,
+          productId: metadata.productId,
+          trustDescription: !Platform.isWindows,
+        ),
         vendorId: metadata.vendorId,
         productId: metadata.productId,
       );
     }).toList();
   }
 
-  ({String? description, int? vendorId, int? productId}) _readPortMetadata(
-    String name,
-  ) {
+  ({
+    String? description,
+    String? manufacturer,
+    String? productName,
+    int? vendorId,
+    int? productId,
+  })
+  _readPortMetadata(String name) {
     final port = SerialPort(name);
     try {
       return (
         description: _safeRead(() => port.description),
+        manufacturer: _safeRead(() => port.manufacturer),
+        productName: _safeRead(() => port.productName),
         vendorId: _safeRead(() => port.vendorId),
         productId: _safeRead(() => port.productId),
       );
@@ -90,10 +105,13 @@ class LibSerialPortAdapter implements SerialAdapter {
       throw StateError('Serial port disappeared: ${port.id}');
     }
     try {
-      _port = _openConfiguredPort(port.id, options.baudRate);
+      _port = _openConfiguredPort(port.id, options);
     } catch (e) {
       if (options.baudRate == 115200 || !_isResultTooLarge(e)) rethrow;
-      _port = _openConfiguredPort(port.id, 115200);
+      _port = _openConfiguredPort(
+        port.id,
+        SerialOptions(baudRate: 115200, dtr: options.dtr, rts: options.rts),
+      );
     }
 
     _reader = SerialPortReader(_port!, timeout: 50);
@@ -103,7 +121,7 @@ class LibSerialPortAdapter implements SerialAdapter {
     );
   }
 
-  SerialPort _openConfiguredPort(String path, int baudRate) {
+  SerialPort _openConfiguredPort(String path, SerialOptions options) {
     final serialPort = SerialPort(path);
     if (!serialPort.openReadWrite()) {
       final error = SerialPort.lastError;
@@ -112,17 +130,22 @@ class LibSerialPortAdapter implements SerialAdapter {
     }
 
     final config = SerialPortConfig()
-      ..baudRate = baudRate
+      ..baudRate = options.baudRate
       ..bits = 8
       ..stopBits = 1
       ..parity = SerialPortParity.none
-      ..setFlowControl(SerialPortFlowControl.none);
+      ..setFlowControl(SerialPortFlowControl.none)
+      ..dtr = options.dtr ? SerialPortDtr.on : SerialPortDtr.off
+      ..rts = options.rts ? SerialPortRts.on : SerialPortRts.off;
     try {
       serialPort.config = config;
+      serialPort.flush(SerialPortBuffer.both);
     } catch (e) {
       serialPort.close();
       serialPort.dispose();
-      throw StateError('Failed to configure $path at $baudRate baud: $e');
+      throw StateError(
+        'Failed to configure $path at ${options.baudRate} baud: $e',
+      );
     }
     return serialPort;
   }
