@@ -37,6 +37,7 @@
   "about": "About",
   "aboutAppDescription": "Umeko IR デバイス向けのクロスプラットフォーム熱画像ビューアです。",
   "version": "バージョン {version}",
+  "githubRepository": "GitHub リポジトリ",
   "licenses": "ライセンス",
   "serialPort": "シリアルポート",
   "chooseSerialPort": "ポートを選択",

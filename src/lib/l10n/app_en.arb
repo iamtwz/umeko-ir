@@ -42,6 +42,7 @@
       "version": {}
     }
   },
+  "githubRepository": "GitHub Repository",
   "licenses": "Licenses",
   "serialPort": "Serial port",
   "chooseSerialPort": "Choose serial port",

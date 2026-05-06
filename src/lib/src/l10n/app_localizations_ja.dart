@@ -110,6 +110,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get githubRepository => 'GitHub リポジトリ';
+
+  @override
   String get licenses => 'ライセンス';
 
   @override

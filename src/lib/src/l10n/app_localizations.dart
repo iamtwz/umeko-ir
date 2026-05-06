@@ -292,6 +292,12 @@ abstract class AppLocalizations {
   /// **'Version {version}'**
   String version(Object version);
 
+  /// No description provided for @githubRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Repository'**
+  String get githubRepository;
+
   /// No description provided for @licenses.
   ///
   /// In en, this message translates to:

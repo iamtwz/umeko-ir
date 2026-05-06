@@ -109,6 +109,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get githubRepository => 'GitHub 仓库';
+
+  @override
   String get licenses => '开源许可';
 
   @override

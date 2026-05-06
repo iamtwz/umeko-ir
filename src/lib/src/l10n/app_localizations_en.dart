@@ -112,6 +112,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get githubRepository => 'GitHub Repository';
+
+  @override
   String get licenses => 'Licenses';
 
   @override

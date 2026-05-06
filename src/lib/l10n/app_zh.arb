@@ -37,6 +37,7 @@
   "about": "关于",
   "aboutAppDescription": "面向 Umeko IR 设备的跨平台热成像查看器。",
   "version": "版本 {version}",
+  "githubRepository": "GitHub 仓库",
   "licenses": "开源许可",
   "serialPort": "串口",
   "chooseSerialPort": "选择串口",

@@ -1207,6 +1207,17 @@ class AppSettingsPane extends ConsumerWidget {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.code),
+                title: Text(l10n.githubRepository),
+                subtitle: const Text(umekoIrRepositoryUrl),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => launchUrl(
+                  Uri.parse(umekoIrRepositoryUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
                 leading: const Icon(Icons.article_outlined),
                 title: Text(l10n.licenses),
                 trailing: const Icon(Icons.chevron_right),
