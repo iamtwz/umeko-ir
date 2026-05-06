@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'src/application/app_settings_controller.dart';
+import 'src/application/posthog_service.dart';
 import 'src/application/sentry_service.dart';
 import 'src/application/thermal_controller.dart';
 import 'src/application/update_service.dart';
@@ -26,6 +28,7 @@ Future<void> main() async {
   final preferences = SharedPreferencesAsync();
   final appTrackingEnabled =
       await preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
+  await configurePostHog(enabled: appTrackingEnabled);
   await configureSentry(
     enabled: appTrackingEnabled,
     appRunner: () => runApp(const ProviderScope(child: UmekoIrApp())),
@@ -38,6 +41,11 @@ class UmekoIrApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
+    final navigatorObservers = <NavigatorObserver>[
+      if (settings.appTrackingEnabled && isSentryConfigured)
+        SentryNavigatorObserver(),
+      if (settings.appTrackingEnabled && isPostHogConfigured) PosthogObserver(),
+    ];
     return MaterialApp(
       onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
@@ -52,9 +60,7 @@ class UmekoIrApp extends ConsumerWidget {
       themeMode: settings.themeMode,
       theme: _buildAppTheme(Brightness.light),
       darkTheme: _buildAppTheme(Brightness.dark),
-      navigatorObservers: settings.appTrackingEnabled && isSentryConfigured
-          ? [SentryNavigatorObserver()]
-          : const [],
+      navigatorObservers: navigatorObservers,
       home: const AppShell(),
     );
   }

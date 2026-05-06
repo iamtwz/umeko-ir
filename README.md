@@ -96,6 +96,10 @@ flutter analyze
 flutter test
 ```
 
+Android builds should run on JDK 17. The repository includes `.java-version`
+for tools such as jenv or asdf; if your shell defaults to a newer JDK, set
+`JAVA_HOME` to JDK 17 before running Gradle or Flutter Android builds.
+
 Run the macOS app:
 
 ```bash

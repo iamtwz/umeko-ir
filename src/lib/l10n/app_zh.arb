@@ -19,7 +19,7 @@
   "lightTheme": "浅色",
   "darkTheme": "深色",
   "appTracking": "App 追踪",
-  "appTrackingDescription": "分享崩溃报告和性能追踪，帮助改进应用。",
+  "appTrackingDescription": "分享匿名使用统计、崩溃报告和性能追踪，帮助改进应用。",
   "autoUpdateCheck": "自动检查更新",
   "autoUpdateCheckDescription": "App 打开时检查 GitHub Releases。",
   "updateAvailableTitle": "发现新版本",

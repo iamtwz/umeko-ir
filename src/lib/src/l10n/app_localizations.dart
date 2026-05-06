@@ -217,7 +217,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTrackingDescription.
   ///
   /// In en, this message translates to:
-  /// **'Share crash reports and performance traces to help improve the app.'**
+  /// **'Share anonymous usage analytics, crash reports, and performance traces to help improve the app.'**
   String get appTrackingDescription;
 
   /// No description provided for @autoUpdateCheck.

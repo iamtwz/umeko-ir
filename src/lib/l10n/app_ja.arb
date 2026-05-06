@@ -19,7 +19,7 @@
   "lightTheme": "ライト",
   "darkTheme": "ダーク",
   "appTracking": "アプリ追跡",
-  "appTrackingDescription": "クラッシュレポートとパフォーマンストレースを共有して、アプリの改善に役立てます。",
+  "appTrackingDescription": "匿名の利用状況、クラッシュレポート、パフォーマンストレースを共有して、アプリの改善に役立てます。",
   "autoUpdateCheck": "自動アップデート確認",
   "autoUpdateCheckDescription": "アプリ起動時に GitHub Releases を確認します。",
   "updateAvailableTitle": "新しいバージョンがあります",

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'posthog_service.dart';
 import 'sentry_service.dart';
 
 const appTrackingEnabledPreferenceKey = 'app.trackingEnabled';
@@ -125,6 +126,7 @@ class AppSettingsController extends Notifier<AppSettingsState> {
   Future<void> setAppTrackingEnabled(bool enabled) async {
     state = state.copyWith(appTrackingEnabled: enabled);
     await _preferences.setBool(appTrackingEnabledPreferenceKey, enabled);
+    await configurePostHog(enabled: enabled);
     await configureSentry(enabled: enabled);
   }
 

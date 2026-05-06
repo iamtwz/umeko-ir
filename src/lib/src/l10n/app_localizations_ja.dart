@@ -67,7 +67,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get appTrackingDescription =>
-      'クラッシュレポートとパフォーマンストレースを共有して、アプリの改善に役立てます。';
+      '匿名の利用状況、クラッシュレポート、パフォーマンストレースを共有して、アプリの改善に役立てます。';
 
   @override
   String get autoUpdateCheck => '自動アップデート確認';

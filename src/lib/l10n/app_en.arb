@@ -19,7 +19,7 @@
   "lightTheme": "Light",
   "darkTheme": "Dark",
   "appTracking": "App Tracking",
-  "appTrackingDescription": "Share crash reports and performance traces to help improve the app.",
+  "appTrackingDescription": "Share anonymous usage analytics, crash reports, and performance traces to help improve the app.",
   "autoUpdateCheck": "Automatic Update Check",
   "autoUpdateCheckDescription": "Check GitHub Releases when the app opens.",
   "updateAvailableTitle": "Update Available",

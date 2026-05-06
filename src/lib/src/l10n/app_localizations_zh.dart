@@ -66,7 +66,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTracking => 'App 追踪';
 
   @override
-  String get appTrackingDescription => '分享崩溃报告和性能追踪，帮助改进应用。';
+  String get appTrackingDescription => '分享匿名使用统计、崩溃报告和性能追踪，帮助改进应用。';
 
   @override
   String get autoUpdateCheck => '自动检查更新';

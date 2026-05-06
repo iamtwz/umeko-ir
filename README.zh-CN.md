@@ -96,6 +96,10 @@ flutter analyze
 flutter test
 ```
 
+Android 构建应使用 JDK 17。仓库包含 `.java-version`，可供 jenv 或 asdf
+等工具识别；如果你的 shell 默认使用更新的 JDK，请在运行 Gradle 或 Flutter
+Android 构建前把 `JAVA_HOME` 指向 JDK 17。
+
 启动 macOS 客户端：
 
 ```bash
