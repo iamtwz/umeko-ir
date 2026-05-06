@@ -3,8 +3,13 @@ name: Flutter CI
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -34,23 +39,23 @@ jobs:
           - target: web
             os: ubuntu-latest
             command: flutter build web --release
-            artifact: src/build/web
+            package_suffix: web.tar.gz
           - target: macos
             os: macos-latest
             command: flutter build macos --release
-            artifact: src/build/macos/Build/Products/Release
+            package_suffix: macos.zip
           - target: linux
             os: ubuntu-latest
             command: flutter build linux --release
-            artifact: src/build/linux/x64/release/bundle
+            package_suffix: linux-x64.tar.gz
           - target: windows
             os: windows-2022
             command: flutter build windows --release
-            artifact: src/build/windows/x64/runner/Release
+            package_suffix: windows-x64.zip
           - target: android
             os: ubuntu-latest
             command: flutter build apk --release
-            artifact: src/build/app/outputs/flutter-apk
+            package_suffix: android-universal.apk
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -86,7 +91,57 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: ${{ matrix.command }}
+      - name: Resolve package version
+        id: package-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../dist
+          package="../dist/umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}"
+          case "${{ matrix.target }}" in
+            android)
+              cp build/app/outputs/flutter-apk/app-release.apk "$package"
+              ;;
+            macos)
+              ditto -c -k --keepParent "build/macos/Build/Products/Release/Umeko IR.app" "$package"
+              ;;
+            linux)
+              tar -czf "$package" -C build/linux/x64/release bundle
+              ;;
+            windows)
+              7z a -tzip "$package" ./build/windows/x64/runner/Release/*
+              ;;
+            web)
+              tar -czf "$package" -C build web
+              ;;
+          esac
       - uses: actions/upload-artifact@v7
         with:
-          name: umeko-ir-${{ matrix.target }}
-          path: ${{ matrix.artifact }}
+          name: umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}
+          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
