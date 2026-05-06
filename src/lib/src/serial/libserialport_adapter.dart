@@ -19,7 +19,9 @@ class LibSerialPortAdapter implements SerialAdapter {
   @override
   Future<List<SerialPortDescriptor>> listPorts() async {
     final rawPorts = SerialPort.availablePorts;
-    return rawPorts.map(_canonicalPortPath).where(_portPathExists).map((name) {
+    return rawPorts.map(_canonicalPortPath).where(_isUsablePortName).map((
+      name,
+    ) {
       final metadata = _readPortMetadata(name);
       return SerialPortDescriptor(
         id: name,
@@ -59,10 +61,21 @@ class LibSerialPortAdapter implements SerialAdapter {
   }
 
   String _canonicalPortPath(String name) {
+    if (Platform.isWindows) return name;
     if (_portPathExists(name)) return name;
     final devPath = '/dev/$name';
     if (_portPathExists(devPath)) return devPath;
     return name;
+  }
+
+  bool _isUsablePortName(String name) {
+    if (Platform.isWindows) return _isWindowsComPortName(name);
+    return _portPathExists(name);
+  }
+
+  bool _isWindowsComPortName(String name) {
+    final normalized = name.toUpperCase();
+    return RegExp(r'^(\\\\\.\\)?COM\d+$').hasMatch(normalized);
   }
 
   bool _portPathExists(String name) {
@@ -73,7 +86,7 @@ class LibSerialPortAdapter implements SerialAdapter {
   Future<void> connect(SerialPortDescriptor port, SerialOptions options) async {
     await disconnect();
     await Future<void>.delayed(const Duration(milliseconds: 150));
-    if (!File(port.id).existsSync()) {
+    if (!Platform.isWindows && !File(port.id).existsSync()) {
       throw StateError('Serial port disappeared: ${port.id}');
     }
     try {
