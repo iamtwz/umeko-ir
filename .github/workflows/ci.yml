@@ -52,10 +52,6 @@ jobs:
             os: windows-2022
             command: flutter build windows --release
             package_suffix: windows-x64.zip
-          - target: android
-            os: ubuntu-latest
-            command: flutter build apk --release
-            package_suffix: android-universal.apk
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -126,10 +122,108 @@ jobs:
           name: umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}
           path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}
 
+  build-android:
+    name: Build android
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - name: Resolve package version
+        id: package-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "../dist/umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk
+          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk
+
+  build-android-release:
+    name: Build signed android
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    environment: release
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Configure Android release signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          keystore_path="$RUNNER_TEMP/umeko-ir-upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+      - run: flutter build apk --release
+      - name: Resolve package version
+        id: package-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "../dist/umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk
+          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk
+
   release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, build-android-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
