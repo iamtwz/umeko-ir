@@ -1039,7 +1039,7 @@ class _DeviceGalleryTab extends StatelessWidget {
               : GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 300,
-                    mainAxisExtent: 268,
+                    mainAxisExtent: 244,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                   ),
@@ -1108,7 +1108,7 @@ class _LocalGalleryTab extends StatelessWidget {
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 300,
-              mainAxisExtent: 268,
+              mainAxisExtent: 244,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
             ),
@@ -1631,7 +1631,7 @@ class _GalleryThumbnailFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 2.45,
+      aspectRatio: 2.6,
       child: ClipRRect(borderRadius: BorderRadius.circular(6), child: child),
     );
   }
