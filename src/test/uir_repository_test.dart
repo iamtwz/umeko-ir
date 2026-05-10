@@ -6,6 +6,7 @@ import 'package:umeko_ir_flutter/src/core/thermal_frame.dart';
 import 'package:umeko_ir_flutter/src/recording/uir_writer.dart';
 import 'package:umeko_ir_flutter/src/storage/gallery_entry.dart';
 import 'package:umeko_ir_flutter/src/storage/uir_repository_io.dart';
+import 'package:umeko_ir_flutter/src/storage/uir_repository_base.dart';
 
 void main() {
   test('saves, lists, reads, and deletes local UIR recordings', () async {
@@ -54,6 +55,37 @@ void main() {
     final repository = IoUirRepository(recordingsDirectory: temp);
 
     expect(await repository.listEntries(), isEmpty);
+  });
+
+  test('ignores unsafe UIR filenames while listing', () async {
+    final temp = await Directory.systemTemp.createTemp('umeko_uir_repo_test_');
+    addTearDown(() async {
+      if (await temp.exists()) await temp.delete(recursive: true);
+    });
+    await File(
+      '${temp.path}${Platform.pathSeparator}unsafe-name.uir',
+    ).writeAsBytes(_sampleRecording());
+
+    final repository = IoUirRepository(recordingsDirectory: temp);
+
+    expect(await repository.listEntries(), isEmpty);
+  });
+
+  test('rejects unsafe local recording ids', () async {
+    final temp = await Directory.systemTemp.createTemp('umeko_uir_repo_test_');
+    addTearDown(() async {
+      if (await temp.exists()) await temp.delete(recursive: true);
+    });
+    final repository = IoUirRepository(recordingsDirectory: temp);
+
+    expect(
+      () => repository.readBytes('../outside'),
+      throwsA(isA<UirRepositoryException>()),
+    );
+    expect(
+      () => repository.delete('bad/path'),
+      throwsA(isA<UirRepositoryException>()),
+    );
   });
 }
 

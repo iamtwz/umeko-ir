@@ -94,7 +94,9 @@ class UirByteWriter {
   void _ensureHeader() {
     if (_headerWritten) return;
     final header = _RecordBytes();
-    final fpsQ16 = nominalFps == null ? 0 : (nominalFps! * 65536).round();
+    final fpsQ16 = nominalFps == null
+        ? 0
+        : (nominalFps! * 65536).round().clamp(0, 0xffffffff);
     header
       ..u32(uirHeaderMagic)
       ..u16(uirFormatMajorVersion)
@@ -175,7 +177,20 @@ class UirByteWriter {
   void _finishRecord(_RecordBytes record) {
     final bytes = record.toBytes();
     final view = ByteData.sublistView(bytes);
-    view.setUint32(4, bytes.length + 4, Endian.little);
+    final recordLength = bytes.length + 4;
+    view.setUint32(4, recordLength, Endian.little);
+    assert(
+      ByteData.sublistView(bytes).getUint32(4, Endian.little) == recordLength,
+    );
+    if (ByteData.sublistView(bytes).getUint32(0, Endian.little) ==
+        uirFrameMagic) {
+      final payloadLength = ByteData.sublistView(
+        bytes,
+        44,
+        48,
+      ).getUint32(0, Endian.little);
+      assert(recordLength == 48 + payloadLength + 4);
+    }
     final crc = uirCrc32(bytes);
     _bytes
       ..add(bytes)
@@ -189,6 +204,7 @@ class UirByteWriter {
       ..u32(_frameCount)
       ..u32(_recordCount);
     final bytes = footer.toBytes();
+    assert(bytes.length + 4 == 20);
     _bytes
       ..add(bytes)
       ..add(_uint32Bytes(uirCrc32(bytes)));

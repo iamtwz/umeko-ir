@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../core/uir_format.dart';
@@ -43,9 +44,14 @@ class IoUirRepository implements UirRepository {
   }) async {
     final directory = await _ensureRecordingsDirectory();
     final document = const UirReader().read(bytes);
-    final id = _newId(document.header.createdAt);
-    final filename = '$id.uir';
-    final dataFile = File(_join(directory.path, filename));
+    late String id;
+    late String filename;
+    late File dataFile;
+    do {
+      id = _newId(document.header.createdAt);
+      filename = '$id.uir';
+      dataFile = File(p.join(directory.path, filename));
+    } while (await dataFile.exists());
     final tempFile = File('${dataFile.path}.tmp');
     await tempFile.writeAsBytes(bytes, flush: true);
     await tempFile.rename(dataFile.path);
@@ -63,7 +69,7 @@ class IoUirRepository implements UirRepository {
   @override
   Future<Uint8List> readBytes(String id) async {
     final directory = await _ensureRecordingsDirectory();
-    final file = File(_join(directory.path, '$id.uir'));
+    final file = File(p.join(directory.path, '${_checkedId(id)}.uir'));
     if (!await file.exists()) {
       throw UirRepositoryException('UIR recording not found: $id');
     }
@@ -73,7 +79,9 @@ class IoUirRepository implements UirRepository {
   @override
   Future<void> delete(String id) async {
     final directory = await _ensureRecordingsDirectory();
-    await _deleteIfExists(File(_join(directory.path, '$id.uir')));
+    await _deleteIfExists(
+      File(p.join(directory.path, '${_checkedId(id)}.uir')),
+    );
   }
 
   Future<Directory> _ensureRecordingsDirectory() async {
@@ -87,17 +95,18 @@ class IoUirRepository implements UirRepository {
 
   Future<Directory> _defaultRecordingsDirectory() async {
     final documents = await getApplicationDocumentsDirectory();
-    return Directory(_join(documents.path, 'Umeko IR', 'recordings'));
+    return Directory(p.join(documents.path, 'Umeko IR', 'recordings'));
   }
 
   Future<UirManifest?> _readUirEntry(File file) async {
     try {
       if (!await file.exists()) return null;
       final bytes = await file.readAsBytes();
-      final filename = _basename(file.path);
+      final filename = p.basename(file.path);
       final id = filename.endsWith('.uir')
           ? filename.substring(0, filename.length - 4)
           : filename;
+      if (!_idPattern.hasMatch(id)) return null;
       final document = const UirReader().read(bytes);
       return UirManifest.fromDocument(
         id: id,
@@ -119,10 +128,7 @@ class IoUirRepository implements UirRepository {
 
   String _newId(DateTime createdAt) {
     final micros = createdAt.toUtc().microsecondsSinceEpoch;
-    final suffix = math.Random()
-        .nextInt(0xfffff)
-        .toRadixString(16)
-        .padLeft(5, '0');
+    final suffix = _idRandom.nextInt(0xfffff).toRadixString(16).padLeft(5, '0');
     return 'uir_${micros}_$suffix';
   }
 
@@ -137,18 +143,13 @@ class IoUirRepository implements UirRepository {
     return fallback;
   }
 
-  String _basename(String path) {
-    return path.split(Platform.pathSeparator).last;
-  }
-
-  String _join(String part1, String part2, [String? part3]) {
-    final separator = Platform.pathSeparator;
-    String joinTwo(String left, String right) {
-      if (left.endsWith(separator)) return '$left$right';
-      return '$left$separator$right';
+  String _checkedId(String id) {
+    if (!_idPattern.hasMatch(id)) {
+      throw UirRepositoryException('Invalid UIR recording id: $id');
     }
-
-    final joined = joinTwo(part1, part2);
-    return part3 == null ? joined : joinTwo(joined, part3);
+    return id;
   }
 }
+
+final _idPattern = RegExp(r'^[A-Za-z0-9_]+$');
+final _idRandom = math.Random();

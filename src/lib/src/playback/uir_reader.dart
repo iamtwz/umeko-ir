@@ -57,9 +57,9 @@ class UirReader {
       }
       try {
         if (magic == uirFrameMagic) {
-          frames.add(_readFrame(bytes, offset, header));
+          frames.add(_readFrame(bytes, offset, length, header));
         } else {
-          metadataRecords.add(_readMetadata(bytes, offset));
+          metadataRecords.add(_readMetadata(bytes, offset, length));
         }
       } on FormatException catch (error) {
         issues.add(
@@ -112,7 +112,15 @@ class UirReader {
     );
   }
 
-  UirFrameRecord _readFrame(Uint8List bytes, int offset, UirHeader header) {
+  UirFrameRecord _readFrame(
+    Uint8List bytes,
+    int offset,
+    int recordLength,
+    UirHeader header,
+  ) {
+    if (recordLength < 52) {
+      throw const FormatException('UIR frame record is too short');
+    }
     final view = ByteData.sublistView(bytes, offset);
     final frameIndex = view.getUint32(8, Endian.little);
     final timestamp = uirDateTimeFromMicros(view.getInt64(12, Endian.little));
@@ -122,6 +130,11 @@ class UirReader {
     final tAvg = view.getFloat32(36, Endian.little);
     final encoding = UirFrameEncoding.fromCode(view.getUint8(40));
     final payloadLength = view.getUint32(44, Endian.little);
+    final count = header.width * header.height;
+    final maxPayloadLength = _maxInt(64, count * 8);
+    if (payloadLength > recordLength - 52 || payloadLength > maxPayloadLength) {
+      throw const FormatException('UIR frame payload length is out of range');
+    }
     final payloadStart = offset + 48;
     final compressed = Uint8List.sublistView(
       bytes,
@@ -129,13 +142,10 @@ class UirReader {
       payloadStart + payloadLength,
     );
     final temperatures = switch (encoding) {
-      UirFrameEncoding.zlibFloat32 => _decodeFloat32(
-        compressed,
-        header.width * header.height,
-      ),
+      UirFrameEncoding.zlibFloat32 => _decodeFloat32(compressed, count),
       UirFrameEncoding.zlibCentiCelsiusDeltas => _decodeCentiDeltas(
         compressed,
-        header.width * header.height,
+        count,
       ),
     };
     return UirFrameRecord(
@@ -156,17 +166,28 @@ class UirReader {
     );
   }
 
-  UirMetadataRecord _readMetadata(Uint8List bytes, int offset) {
+  UirMetadataRecord _readMetadata(
+    Uint8List bytes,
+    int offset,
+    int recordLength,
+  ) {
+    if (recordLength < 24) {
+      throw const FormatException('UIR metadata record is too short');
+    }
     final view = ByteData.sublistView(bytes, offset);
     final recordIndex = view.getUint32(8, Endian.little);
     final uncompressedLength = view.getUint32(12, Endian.little);
     final compressedLength = view.getUint32(16, Endian.little);
+    if (compressedLength > recordLength - 24 ||
+        uncompressedLength > _maxMetadataBytes) {
+      throw const FormatException('UIR metadata length is out of range');
+    }
     final compressed = Uint8List.sublistView(
       bytes,
       offset + 20,
       offset + 20 + compressedLength,
     );
-    final jsonBytes = Uint8List.fromList(ZLibDecoder().decodeBytes(compressed));
+    final jsonBytes = _inflate(compressed);
     if (jsonBytes.length != uncompressedLength) {
       throw const FormatException('UIR metadata length mismatch');
     }
@@ -177,7 +198,7 @@ class UirReader {
   }
 
   Float32List _decodeFloat32(Uint8List compressed, int count) {
-    final raw = Uint8List.fromList(ZLibDecoder().decodeBytes(compressed));
+    final raw = _inflate(compressed);
     if (raw.length != count * 4) {
       throw const FormatException('UIR float32 payload length mismatch');
     }
@@ -190,7 +211,7 @@ class UirReader {
   }
 
   Float32List _decodeCentiDeltas(Uint8List compressed, int count) {
-    final raw = Uint8List.fromList(ZLibDecoder().decodeBytes(compressed));
+    final raw = _inflate(compressed);
     if (raw.length != 4 + count * 2) {
       throw const FormatException('UIR centi payload length mismatch');
     }
@@ -228,4 +249,12 @@ class UirReader {
     }
     return -1;
   }
+
+  Uint8List _inflate(Uint8List compressed) {
+    return ZLibDecoder().decodeBytes(compressed);
+  }
 }
+
+const _maxMetadataBytes = 1024 * 1024;
+
+int _maxInt(int a, int b) => a > b ? a : b;

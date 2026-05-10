@@ -112,6 +112,7 @@ Offset thermalPointToDisplay(
   var y = point.yNorm.clamp(0.0, 1.0);
   var w = width;
   var h = height;
+  // Sensor mounting orientation: raw frames are mirrored and upside down.
   (x, y, w, h) = _applyTransform(x, y, w, h, rotation: 180, hflip: true);
   (x, y, w, h) = _applyTransform(
     x,
@@ -144,6 +145,7 @@ Offset displayToThermalPoint(
     hflip: settings.hflip,
     vflip: settings.vflip,
   );
+  // Inverse of the fixed sensor mounting orientation above.
   (x, y, w, h) = _invertTransform(x, y, w, h, rotation: 180, hflip: true);
   return Offset(x.clamp(0.0, 1.0), y.clamp(0.0, 1.0));
 }

@@ -128,6 +128,7 @@ class UirDocument {
   final List<UirReadIssue> issues;
   final int? footerFrameCount;
 
+  /// The effective metadata snapshot, taken from the latest metadata record.
   Map<String, Object?> get metadata => metadataRecords.isEmpty
       ? const {}
       : Map.unmodifiable(metadataRecords.last.metadata);

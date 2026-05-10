@@ -59,6 +59,26 @@ void main() {
     expect(document.issues, isEmpty);
   });
 
+  test('validates footer CRC using the footer record length', () {
+    final bytes = _sampleVideo();
+    final footerOffset = bytes.length - 20;
+    final footerLength = ByteData.sublistView(
+      bytes,
+      footerOffset + 4,
+      footerOffset + 8,
+    ).getUint32(0, Endian.little);
+    final mutable = Uint8List.fromList(bytes);
+    mutable[footerOffset + 8] ^= 0xff;
+
+    final document = const UirReader().read(mutable);
+
+    expect(footerLength, 20);
+    expect(document.frames, hasLength(2));
+    expect(document.footerFrameCount, isNull);
+    expect(document.issues, hasLength(1));
+    expect(document.issues.single.issue, UirRecordIssue.badCrc);
+  });
+
   test('skips a corrupted frame and keeps later frames readable', () {
     final bytes = _sampleVideo();
     final firstFrameOffset = uirHeaderLength;
@@ -100,6 +120,36 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('falls back to zlib float32 when centi deltas overflow', () {
+    final createdAt = DateTime.utc(2026, 5, 10, 12);
+    final temperatures = Float32List.fromList([0, 700]);
+    final writer = UirByteWriter(
+      width: 2,
+      height: 1,
+      sensorType: ThermalSensorType.mlx90640,
+      createdAt: createdAt,
+    );
+    writer.writeFrame(
+      ThermalFrame(
+        id: 'wide-range',
+        timestamp: createdAt,
+        temperatures: temperatures,
+        width: 2,
+        height: 1,
+        sensorType: ThermalSensorType.mlx90640,
+        tMin: 0,
+        tMax: 700,
+        tAvg: 350,
+      ),
+      elapsed: Duration.zero,
+    );
+
+    final document = const UirReader().read(writer.finish());
+
+    expect(document.frames.single.encoding, UirFrameEncoding.zlibFloat32);
+    expect(document.frames.single.frame.temperatures[1], closeTo(700, 0.001));
   });
 }
 
