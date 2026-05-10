@@ -14,6 +14,7 @@ import 'src/application/app_settings_controller.dart';
 import 'src/application/build_channel.dart';
 import 'src/application/posthog_service.dart';
 import 'src/application/sentry_service.dart';
+import 'src/application/thermal_points_controller.dart';
 import 'src/application/thermal_controller.dart';
 import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
@@ -740,15 +741,17 @@ class RecordingControls extends ConsumerWidget {
   }
 }
 
-class ThermalViewerCard extends StatelessWidget {
+class ThermalViewerCard extends ConsumerWidget {
   const ThermalViewerCard({super.key, required this.state});
 
   final ThermalState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final frame = state.currentFrame;
     final l10n = context.l10n;
+    final points = ref.watch(thermalPointsProvider);
+    final pointsController = ref.read(thermalPointsProvider.notifier);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -764,6 +767,10 @@ class ThermalViewerCard extends StatelessWidget {
                     frame,
                     settings: state.renderSettings,
                     scale: 14,
+                    points: points,
+                    onPointAdded: pointsController.add,
+                    onPointMoved: pointsController.move,
+                    onPointRemoved: pointsController.remove,
                   ),
           ),
           Positioned(
@@ -1075,6 +1082,8 @@ class _LocalUirPlaybackView extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
+    final points = ref.watch(thermalPointsProvider);
+    final pointsController = ref.read(thermalPointsProvider.notifier);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -1092,6 +1101,10 @@ class _LocalUirPlaybackView extends ConsumerWidget {
                     frame,
                     settings: renderSettings,
                     scale: wide ? 10 : 8,
+                    points: points,
+                    onPointAdded: pointsController.add,
+                    onPointMoved: pointsController.move,
+                    onPointRemoved: pointsController.remove,
                   );
             final controls = _PlaybackControls(controller: controller);
             return wide

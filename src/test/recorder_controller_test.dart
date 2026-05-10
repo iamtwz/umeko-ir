@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:umeko_ir_flutter/src/application/thermal_points_controller.dart';
 import 'package:umeko_ir_flutter/src/application/thermal_controller.dart';
 import 'package:umeko_ir_flutter/src/playback/uir_reader.dart';
 import 'package:umeko_ir_flutter/src/recording/recorder_controller.dart';
@@ -23,6 +24,7 @@ void main() {
     );
     addTearDown(container.dispose);
     await _connectAndEmitFrame(container, serial, 0);
+    container.read(thermalPointsProvider.notifier).add(0.25, 0.5);
 
     final recorder = container.read(recorderControllerProvider.notifier);
     final entry = await recorder.captureSnapshot(name: 'Still');
@@ -33,6 +35,7 @@ void main() {
     expect(repository.savedBytes, hasLength(1));
     final document = const UirReader().read(repository.savedBytes.single);
     expect(document.header.isVideo, isFalse);
+    expect(document.metadata['points'], isA<List<Object?>>());
     expect(document.frames, hasLength(1));
     expect(document.frames.single.frame.temperatures.first, closeTo(20, 0.005));
   });

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../application/thermal_points_controller.dart';
 import '../application/thermal_controller.dart';
 import '../core/thermal_frame.dart';
 import '../storage/gallery_entry.dart';
@@ -102,7 +103,9 @@ class RecorderController extends Notifier<RecorderState> {
         height: frame.height,
         sensorType: frame.sensorType,
         createdAt: frame.timestamp,
-      )..writeFrame(frame, elapsed: Duration.zero);
+      );
+      _writePointMetadata(writer);
+      writer.writeFrame(frame, elapsed: Duration.zero);
       final entry = await ref
           .read(uirRepositoryProvider)
           .saveBytes(
@@ -140,6 +143,7 @@ class RecorderController extends Notifier<RecorderState> {
       createdAt: frame.timestamp,
       isVideo: true,
     );
+    _writePointMetadata(_writer!);
     _writeFrame(frame);
     _frameSubscription = ref
         .read(thermalControllerProvider.notifier)
@@ -219,6 +223,14 @@ class RecorderController extends Notifier<RecorderState> {
       elapsed: state.elapsed,
       error: error.toString(),
     );
+  }
+
+  void _writePointMetadata(UirByteWriter writer) {
+    final points = ref.read(thermalPointsProvider);
+    if (points.isEmpty) return;
+    writer.writeMetadata({
+      'points': [for (final point in points) point.toJson()],
+    });
   }
 
   String _snapshotName(ThermalFrame frame) {

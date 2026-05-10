@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/thermal_frame.dart';
+import '../core/thermal_points.dart';
 import '../core/thermal_rendering.dart';
+import 'thermal_points_overlay.dart';
 
 class ThermalRasterView extends StatefulWidget {
   const ThermalRasterView({
@@ -15,8 +17,13 @@ class ThermalRasterView extends StatefulWidget {
     required this.tMin,
     required this.tMax,
     required this.settings,
+    this.sensorType = ThermalSensorType.legacy,
     this.scale = 12,
     this.showOverlay = true,
+    this.points = const [],
+    this.onPointAdded,
+    this.onPointMoved,
+    this.onPointRemoved,
   });
 
   factory ThermalRasterView.frame(
@@ -25,6 +32,10 @@ class ThermalRasterView extends StatefulWidget {
     required RenderSettings settings,
     int scale = 12,
     bool showOverlay = true,
+    List<ThermalPoint> points = const [],
+    void Function(double xNorm, double yNorm)? onPointAdded,
+    void Function(String id, double xNorm, double yNorm)? onPointMoved,
+    void Function(String id)? onPointRemoved,
   }) {
     return ThermalRasterView(
       key: key,
@@ -33,9 +44,14 @@ class ThermalRasterView extends StatefulWidget {
       height: frame.height,
       tMin: frame.tMin,
       tMax: frame.tMax,
+      sensorType: frame.sensorType,
       settings: settings,
       scale: scale,
       showOverlay: showOverlay,
+      points: points,
+      onPointAdded: onPointAdded,
+      onPointMoved: onPointMoved,
+      onPointRemoved: onPointRemoved,
     );
   }
 
@@ -44,9 +60,14 @@ class ThermalRasterView extends StatefulWidget {
   final int height;
   final double tMin;
   final double tMax;
+  final ThermalSensorType sensorType;
   final RenderSettings settings;
   final int scale;
   final bool showOverlay;
+  final List<ThermalPoint> points;
+  final void Function(double xNorm, double yNorm)? onPointAdded;
+  final void Function(String id, double xNorm, double yNorm)? onPointMoved;
+  final void Function(String id)? onPointRemoved;
 
   @override
   State<ThermalRasterView> createState() => _ThermalRasterViewState();
@@ -152,6 +173,24 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
                       settings: widget.settings,
                       extrema: extrema,
                       showOverlay: widget.showOverlay,
+                    ),
+                    child: ThermalPointsOverlay(
+                      frame: ThermalFrame(
+                        id: 'overlay',
+                        timestamp: DateTime.fromMicrosecondsSinceEpoch(0),
+                        temperatures: widget.temperatures,
+                        width: widget.width,
+                        height: widget.height,
+                        sensorType: widget.sensorType,
+                        tMin: widget.tMin,
+                        tMax: widget.tMax,
+                        tAvg: extrema.avg,
+                      ),
+                      settings: widget.settings,
+                      points: widget.points,
+                      onPointAdded: widget.onPointAdded,
+                      onPointMoved: widget.onPointMoved,
+                      onPointRemoved: widget.onPointRemoved,
                     ),
                   ),
                 ),
