@@ -34,7 +34,7 @@ class UirPlaybackController extends ChangeNotifier {
       document.frames.isEmpty ? Duration.zero : document.frames.last.elapsed;
 
   void setSpeed(double value) {
-    _speed = value.clamp(0.25, 4);
+    _speed = value.clamp(0.5, 3);
     if (_playing) _scheduleNext();
     notifyListeners();
   }

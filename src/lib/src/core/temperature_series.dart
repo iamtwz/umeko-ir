@@ -56,6 +56,34 @@ String temperatureSeriesCsv({
   return buffer.toString();
 }
 
+String temperatureSamplesCsv({
+  required Map<String, List<TemperatureSample>> series,
+  required List<ThermalPoint> points,
+}) {
+  final buffer = StringBuffer(
+    'elapsed_ms,point_id,point_label,x_norm,y_norm,temperature_c\n',
+  );
+  for (final point in points) {
+    final samples = series[point.id] ?? const <TemperatureSample>[];
+    for (final sample in samples) {
+      buffer
+        ..write(sample.elapsed.inMilliseconds)
+        ..write(',')
+        ..write(_csv(point.id))
+        ..write(',')
+        ..write(_csv(point.label))
+        ..write(',')
+        ..write(point.xNorm.toStringAsFixed(6))
+        ..write(',')
+        ..write(point.yNorm.toStringAsFixed(6))
+        ..write(',')
+        ..write(sample.temperature.toStringAsFixed(2))
+        ..write('\n');
+    }
+  }
+  return buffer.toString();
+}
+
 String _csv(String value) {
   if (!value.contains(RegExp('[,"\n]'))) return value;
   return '"${value.replaceAll('"', '""')}"';

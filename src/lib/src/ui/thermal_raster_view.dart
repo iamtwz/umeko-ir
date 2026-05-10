@@ -282,7 +282,7 @@ class _ThermalImagePainter extends CustomPainter {
     for (final line in lines) {
       final textPainter = _textPainter(line, Colors.white, 12);
       final rect = Rect.fromLTWH(
-        size.width - textPainter.width - 18,
+        8,
         y - 3,
         textPainter.width + 10,
         textPainter.height + 6,
@@ -291,7 +291,7 @@ class _ThermalImagePainter extends CustomPainter {
         RRect.fromRectAndRadius(rect, const Radius.circular(5)),
         Paint()..color = Colors.black.withValues(alpha: 0.62),
       );
-      textPainter.paint(canvas, Offset(size.width - textPainter.width - 13, y));
+      textPainter.paint(canvas, Offset(13, y));
       y += textPainter.height + 8;
     }
   }

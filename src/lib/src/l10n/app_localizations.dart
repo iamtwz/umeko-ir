@@ -610,11 +610,41 @@ abstract class AppLocalizations {
   /// **'Stop'**
   String get stopRecording;
 
+  /// No description provided for @captureSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Snapshot saved'**
+  String get captureSaved;
+
+  /// No description provided for @recordingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording saved'**
+  String get recordingSaved;
+
+  /// No description provided for @advancedRenderSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Image settings'**
+  String get advancedRenderSettings;
+
+  /// No description provided for @playbackSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback speed'**
+  String get playbackSpeed;
+
   /// No description provided for @localFiles.
   ///
   /// In en, this message translates to:
   /// **'Local: {count}'**
   String localFiles(Object count);
+
+  /// No description provided for @localFileBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'{photoCount} images · {videoCount} videos'**
+  String localFileBreakdown(Object photoCount, Object videoCount);
 
   /// No description provided for @deviceFilesSection.
   ///
@@ -637,20 +667,50 @@ abstract class AppLocalizations {
   /// No description provided for @shareUir.
   ///
   /// In en, this message translates to:
-  /// **'Share UIR'**
+  /// **'Save UIR'**
   String get shareUir;
 
   /// No description provided for @sharePng.
   ///
   /// In en, this message translates to:
-  /// **'Share PNG'**
+  /// **'Save PNG'**
   String get sharePng;
+
+  /// No description provided for @shareApng.
+  ///
+  /// In en, this message translates to:
+  /// **'Save APNG'**
+  String get shareApng;
 
   /// No description provided for @shareCsv.
   ///
   /// In en, this message translates to:
-  /// **'Share CSV'**
+  /// **'Save CSV'**
   String get shareCsv;
+
+  /// No description provided for @photoKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get photoKind;
+
+  /// No description provided for @exportOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Export options'**
+  String get exportOptions;
+
+  /// No description provided for @includeLegend.
+  ///
+  /// In en, this message translates to:
+  /// **'Show legend'**
+  String get includeLegend;
+
+  /// No description provided for @includeMeasurementPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Show measurement points'**
+  String get includeMeasurementPoints;
 
   /// No description provided for @previousFrame.
   ///

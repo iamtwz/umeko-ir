@@ -121,6 +121,9 @@ class _MemoryUirRepository implements UirRepository {
       width: document.header.width,
       height: document.header.height,
       sensorType: document.header.sensorType,
+      tMin: document.frames.isEmpty ? 0 : document.frames.first.frame.tMin,
+      tMax: document.frames.isEmpty ? 0 : document.frames.first.frame.tMax,
+      tAvg: document.frames.isEmpty ? 0 : document.frames.first.frame.tAvg,
       duration: document.frames.isEmpty ? null : document.frames.last.elapsed,
       frameCount: document.frames.length,
     );

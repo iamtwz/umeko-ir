@@ -278,8 +278,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stopRecording => 'Stop';
 
   @override
+  String get captureSaved => 'Snapshot saved';
+
+  @override
+  String get recordingSaved => 'Recording saved';
+
+  @override
+  String get advancedRenderSettings => 'Image settings';
+
+  @override
+  String get playbackSpeed => 'Playback speed';
+
+  @override
   String localFiles(Object count) {
     return 'Local: $count';
+  }
+
+  @override
+  String localFileBreakdown(Object photoCount, Object videoCount) {
+    return '$photoCount images · $videoCount videos';
   }
 
   @override
@@ -292,13 +309,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get export => 'Export';
 
   @override
-  String get shareUir => 'Share UIR';
+  String get shareUir => 'Save UIR';
 
   @override
-  String get sharePng => 'Share PNG';
+  String get sharePng => 'Save PNG';
 
   @override
-  String get shareCsv => 'Share CSV';
+  String get shareApng => 'Save APNG';
+
+  @override
+  String get shareCsv => 'Save CSV';
+
+  @override
+  String get photoKind => 'Photo';
+
+  @override
+  String get exportOptions => 'Export options';
+
+  @override
+  String get includeLegend => 'Show legend';
+
+  @override
+  String get includeMeasurementPoints => 'Show measurement points';
 
   @override
   String get previousFrame => 'Previous frame';

@@ -15,6 +15,9 @@ class GalleryEntry {
     required this.width,
     required this.height,
     required this.sensorType,
+    required this.tMin,
+    required this.tMax,
+    required this.tAvg,
     this.duration,
     this.frameCount,
   });
@@ -28,6 +31,9 @@ class GalleryEntry {
   final int width;
   final int height;
   final ThermalSensorType sensorType;
+  final double tMin;
+  final double tMax;
+  final double tAvg;
   final Duration? duration;
   final int? frameCount;
 }

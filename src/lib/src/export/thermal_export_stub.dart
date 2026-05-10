@@ -19,10 +19,28 @@ class ThermalExporter {
     );
   }
 
+  Future<void> shareCsvText({required String name, required String csv}) async {
+    throw const ThermalExportException(
+      'Export sharing is not implemented on this platform yet.',
+    );
+  }
+
   Future<void> sharePng(
     GalleryEntry entry,
     RenderSettings settings, {
     bool includePoints = true,
+    bool includeLegend = true,
+  }) async {
+    throw const ThermalExportException(
+      'Export sharing is not implemented on this platform yet.',
+    );
+  }
+
+  Future<void> shareApng(
+    GalleryEntry entry,
+    RenderSettings settings, {
+    bool includePoints = true,
+    bool includeLegend = true,
   }) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',

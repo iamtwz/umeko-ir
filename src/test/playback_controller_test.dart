@@ -32,10 +32,10 @@ void main() {
     addTearDown(controller.dispose);
 
     controller.setSpeed(9);
-    expect(controller.speed, 4);
+    expect(controller.speed, 3);
 
     controller.setSpeed(0.1);
-    expect(controller.speed, 0.25);
+    expect(controller.speed, 0.5);
   });
 
   test('restores measurement points from UIR metadata', () {

@@ -47,6 +47,30 @@ void main() {
     expect(csv, contains(',1,p1,P1,'));
     expect(csv, contains(',21.00'));
   });
+
+  test('exports sampled temperature series as CSV', () {
+    const point = ThermalPoint(
+      id: 'p1',
+      xNorm: 0.25,
+      yNorm: 0.5,
+      label: 'P1',
+      colorArgb: 0xffffffff,
+    );
+    final csv = temperatureSamplesCsv(
+      series: const {
+        'p1': [
+          TemperatureSample(
+            elapsed: Duration(milliseconds: 120),
+            temperature: 23.45,
+          ),
+        ],
+      },
+      points: const [point],
+    );
+
+    expect(csv, contains('elapsed_ms,point_id'));
+    expect(csv, contains('120,p1,P1,0.250000,0.500000,23.45'));
+  });
 }
 
 UirDocument _document() {

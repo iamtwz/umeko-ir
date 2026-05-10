@@ -114,12 +114,34 @@ String _formatDuration(Duration duration) {
   return '$minutes:$seconds';
 }
 
-String _formatBytes(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  final kib = bytes / 1024;
-  if (kib < 1024) return '${kib.toStringAsFixed(1)} KB';
-  final mib = kib / 1024;
-  return '${mib.toStringAsFixed(1)} MB';
+String _devicePhotoInfo(BuildContext context, DevicePhoto photo) {
+  final l10n = context.l10n;
+  return [
+    '${photo.width}x${photo.height}',
+    l10n.photoKind,
+    _temperatureRange(photo.tMin, photo.tMax),
+  ].join('  ');
+}
+
+String _galleryEntryInfo(
+  BuildContext context,
+  GalleryEntry entry,
+  Duration? duration,
+) {
+  final l10n = context.l10n;
+  return [
+    '${entry.width}x${entry.height}',
+    entry.kind == GalleryKind.photo
+        ? l10n.photoKind
+        : l10n.framesMetric(entry.frameCount ?? 0),
+    if (entry.kind == GalleryKind.video && duration != null)
+      _formatDuration(duration),
+    _temperatureRange(entry.tMin, entry.tMax),
+  ].join('  ');
+}
+
+String _temperatureRange(double min, double max) {
+  return '${min.toStringAsFixed(1)}-${max.toStringAsFixed(1)} C';
 }
 
 class AppShell extends ConsumerStatefulWidget {
@@ -703,6 +725,8 @@ class RecordingControls extends ConsumerWidget {
     final l10n = context.l10n;
     final busy = recorder.status == RecorderStatus.finalizing;
     final canUseFrame = frame != null && !busy && storageAvailable;
+    final showRecordingStatus =
+        recorder.isRecording || (busy && recorder.frameCount > 0);
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
@@ -715,7 +739,7 @@ class RecordingControls extends ConsumerWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: canUseFrame
-                        ? () => controller.captureSnapshot()
+                        ? () => _captureSnapshot(context, controller)
                         : null,
                     icon: const Icon(Icons.camera_alt_outlined),
                     label: Text(l10n.capture),
@@ -725,7 +749,9 @@ class RecordingControls extends ConsumerWidget {
                 Expanded(
                   child: recorder.isRecording
                       ? FilledButton.icon(
-                          onPressed: busy ? null : controller.stopRecording,
+                          onPressed: busy
+                              ? null
+                              : () => _stopRecording(context, controller),
                           icon: const Icon(Icons.stop),
                           label: Text(l10n.stopRecording),
                         )
@@ -739,7 +765,7 @@ class RecordingControls extends ConsumerWidget {
                 ),
               ],
             ),
-            if (recorder.isRecording || busy) ...[
+            if (showRecordingStatus) ...[
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -773,6 +799,40 @@ class RecordingControls extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _captureSnapshot(
+    BuildContext context,
+    RecorderController controller,
+  ) async {
+    final entry = await controller.captureSnapshot();
+    if (!context.mounted || entry == null) return;
+    _showSingleSnackBar(context, context.l10n.captureSaved);
+  }
+
+  Future<void> _stopRecording(
+    BuildContext context,
+    RecorderController controller,
+  ) async {
+    final entry = await controller.stopRecording();
+    if (!context.mounted || entry == null) return;
+    _showSingleSnackBar(context, context.l10n.recordingSaved);
+  }
+
+  void _showSingleSnackBar(BuildContext context, String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(message),
+        action: SnackBarAction(
+          label: context.l10n.close,
+          onPressed: () => messenger.hideCurrentSnackBar(),
+        ),
+      ),
+    );
+    Future<void>.delayed(const Duration(seconds: 2), controller.close);
   }
 }
 
@@ -840,14 +900,56 @@ class GalleryPane extends ConsumerWidget {
     final localGallery = ref.watch(localGalleryProvider);
     final controller = ref.read(thermalControllerProvider.notifier);
     final l10n = context.l10n;
-    final colorScheme = Theme.of(context).colorScheme;
     final localEntries = localGallery.asData?.value ?? const <GalleryEntry>[];
-    final hasAnyEntries = state.gallery.isNotEmpty || localEntries.isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
+    return DefaultTabController(
+      length: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TabBar(
+              tabs: [
+                Tab(text: l10n.deviceFilesSection),
+                Tab(text: l10n.localRecordings),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _DeviceGalleryTab(state: state, controller: controller),
+                  _LocalGalleryTab(
+                    localGallery: localGallery,
+                    entries: localEntries,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeviceGalleryTab extends StatelessWidget {
+  const _DeviceGalleryTab({required this.state, required this.controller});
+
+  final ThermalState state;
+  final ThermalController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               FilledButton.icon(
                 onPressed: state.connected && !state.busy
@@ -856,7 +958,6 @@ class GalleryPane extends ConsumerWidget {
                 icon: const Icon(Icons.sync),
                 label: Text(l10n.readDevice),
               ),
-              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: state.gallery.isEmpty
                     ? null
@@ -864,123 +965,144 @@ class GalleryPane extends ConsumerWidget {
                 icon: const Icon(Icons.delete_sweep_outlined),
                 label: Text(l10n.clearDevice),
               ),
-              const Spacer(),
-              Text(
-                '${l10n.deviceFiles(state.gallery.length)}  ${l10n.localFiles(localEntries.length)}',
-                style: TextStyle(color: colorScheme.onSurfaceVariant),
-              ),
             ],
           ),
-          if (state.galleryLoading) ...[
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: state.galleryTotal == 0
-                  ? null
-                  : state.galleryLoaded / state.galleryTotal,
-            ),
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${state.galleryLoaded}/${state.galleryTotal}',
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
+        ),
+        if (state.galleryLoading) ...[
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: state.galleryTotal == 0
+                ? null
+                : state.galleryLoaded / state.galleryTotal,
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${state.galleryLoaded}/${state.galleryTotal}',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
               ),
             ),
-          ],
-          const SizedBox(height: 16),
-          Expanded(
-            child: !hasAnyEntries && !localGallery.isLoading
-                ? EmptyPanel(
-                    icon: Icons.photo_library_outlined,
-                    title: l10n.noDevicePhotos,
-                    subtitle: l10n.readDeviceFiles,
-                  )
-                : CustomScrollView(
-                    slivers: [
-                      if (state.gallery.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: _GallerySectionHeader(
-                            title: l10n.deviceFilesSection,
-                            count: state.gallery.length,
-                          ),
-                        ),
-                        SliverGrid.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 260,
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                              ),
-                          itemCount: state.gallery.length,
-                          itemBuilder: (context, index) {
-                            final photo = state.gallery[index];
-                            return GalleryTile(photo: photo);
-                          },
-                        ),
-                      ],
-                      if (localGallery.isLoading)
-                        const SliverToBoxAdapter(
-                          child: LinearProgressIndicator(),
-                        ),
-                      if (localGallery.hasError)
-                        SliverToBoxAdapter(
-                          child: Text(
-                            localGallery.error.toString(),
-                            style: TextStyle(color: colorScheme.error),
-                          ),
-                        ),
-                      if (localEntries.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: _GallerySectionHeader(
-                            title: l10n.localRecordings,
-                            count: localEntries.length,
-                          ),
-                        ),
-                        SliverGrid.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 260,
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                              ),
-                          itemCount: localEntries.length,
-                          itemBuilder: (context, index) {
-                            return LocalGalleryTile(entry: localEntries[index]);
-                          },
-                        ),
-                      ],
-                    ],
-                  ),
           ),
         ],
-      ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: state.gallery.isEmpty
+              ? EmptyPanel(
+                  icon: Icons.photo_library_outlined,
+                  title: l10n.noDevicePhotos,
+                  subtitle: l10n.readDeviceFiles,
+                )
+              : GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 260,
+                    childAspectRatio: 0.82,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                  ),
+                  itemCount: state.gallery.length,
+                  itemBuilder: (context, index) {
+                    return GalleryTile(photo: state.gallery[index]);
+                  },
+                ),
+        ),
+        const SizedBox(height: 12),
+        _GalleryFooter(text: l10n.deviceFiles(state.gallery.length)),
+      ],
     );
   }
 }
 
-class _GallerySectionHeader extends StatelessWidget {
-  const _GallerySectionHeader({required this.title, required this.count});
+class _LocalGalleryTab extends StatelessWidget {
+  const _LocalGalleryTab({required this.localGallery, required this.entries});
 
-  final String title;
-  final int count;
+  final AsyncValue<List<GalleryEntry>> localGallery;
+  final List<GalleryEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
+    if (localGallery.isLoading) {
+      return const Align(
+        alignment: Alignment.topCenter,
+        child: LinearProgressIndicator(),
+      );
+    }
+    if (localGallery.hasError) {
+      return Text(
+        localGallery.error.toString(),
+        style: TextStyle(color: colorScheme.error),
+      );
+    }
+    final photoCount = entries
+        .where((entry) => entry.kind == GalleryKind.photo)
+        .length;
+    final videoCount = entries
+        .where((entry) => entry.kind == GalleryKind.video)
+        .length;
+    final footerText =
+        '${l10n.localFiles(entries.length)} · '
+        '${l10n.localFileBreakdown(photoCount, videoCount)}';
+    if (entries.isEmpty) {
+      return Column(
+        children: [
+          Expanded(
+            child: EmptyPanel(
+              icon: Icons.folder_outlined,
+              title: l10n.localRecordings,
+              subtitle: l10n.localFileBreakdown(0, 0),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _GalleryFooter(text: footerText),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        Expanded(
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 260,
+              childAspectRatio: 0.82,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+            ),
+            itemCount: entries.length,
+            itemBuilder: (context, index) {
+              return LocalGalleryTile(entry: entries[index]);
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        _GalleryFooter(text: footerText),
+      ],
+    );
+  }
+}
+
+class _GalleryFooter extends StatelessWidget {
+  const _GalleryFooter({required this.text});
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, top: 6),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-          ),
-          const SizedBox(width: 8),
-          Text('$count', style: TextStyle(color: colorScheme.onSurfaceVariant)),
-        ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
       ),
     );
   }
@@ -1034,16 +1156,17 @@ class LocalGalleryTile extends ConsumerWidget {
                     ),
                     itemBuilder: (context) => [
                       PopupMenuItem(
-                        value: _LocalExportAction.uir,
-                        child: Text(l10n.shareUir),
-                      ),
-                      PopupMenuItem(
                         value: _LocalExportAction.png,
                         child: Text(l10n.sharePng),
                       ),
+                      if (entry.kind == GalleryKind.video)
+                        PopupMenuItem(
+                          value: _LocalExportAction.apng,
+                          child: Text(l10n.shareApng),
+                        ),
                       PopupMenuItem(
-                        value: _LocalExportAction.csv,
-                        child: Text(l10n.shareCsv),
+                        value: _LocalExportAction.uir,
+                        child: Text(l10n.shareUir),
                       ),
                     ],
                     child: const Icon(Icons.more_vert),
@@ -1051,7 +1174,7 @@ class LocalGalleryTile extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              Expanded(child: _LocalGalleryPreview(entry: entry)),
+              _GalleryThumbnailFrame(child: _LocalGalleryPreview(entry: entry)),
               const SizedBox(height: 10),
               Text(
                 entry.name,
@@ -1061,13 +1184,7 @@ class LocalGalleryTile extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                [
-                  '${entry.width}x${entry.height}',
-                  if (entry.frameCount != null)
-                    l10n.framesMetric(entry.frameCount!),
-                  if (duration != null) _formatDuration(duration),
-                  _formatBytes(entry.sizeBytes),
-                ].join('  '),
+                _galleryEntryInfo(context, entry, duration),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1093,9 +1210,25 @@ class LocalGalleryTile extends ConsumerWidget {
         case _LocalExportAction.uir:
           await exporter.shareUir(entry);
         case _LocalExportAction.png:
-          await exporter.sharePng(entry, renderSettings);
-        case _LocalExportAction.csv:
-          await exporter.shareCsv(entry);
+          if (!context.mounted) return;
+          final options = await _showPngExportOptions(context, renderSettings);
+          if (options == null) return;
+          await exporter.sharePng(
+            entry,
+            options.settings,
+            includePoints: options.includePoints,
+            includeLegend: options.includeLegend,
+          );
+        case _LocalExportAction.apng:
+          if (!context.mounted) return;
+          final options = await _showPngExportOptions(context, renderSettings);
+          if (options == null) return;
+          await exporter.shareApng(
+            entry,
+            options.settings,
+            includePoints: options.includePoints,
+            includeLegend: options.includeLegend,
+          );
       }
     } catch (error) {
       if (!context.mounted) return;
@@ -1106,7 +1239,136 @@ class LocalGalleryTile extends ConsumerWidget {
   }
 }
 
-enum _LocalExportAction { uir, png, csv }
+enum _LocalExportAction { png, apng, uir }
+
+class _LocalExportOptions {
+  const _LocalExportOptions({
+    required this.includeLegend,
+    required this.includePoints,
+    required this.settings,
+  });
+
+  final bool includeLegend;
+  final bool includePoints;
+  final RenderSettings settings;
+}
+
+Future<_LocalExportOptions?> _showPngExportOptions(
+  BuildContext context,
+  RenderSettings initialSettings,
+) {
+  var includeLegend = true;
+  var includePoints = true;
+  var settings = initialSettings;
+  final l10n = context.l10n;
+  return showDialog<_LocalExportOptions>(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text(l10n.exportOptions),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: includeLegend,
+                      title: Text(l10n.includeLegend),
+                      onChanged: (value) {
+                        setState(() => includeLegend = value ?? includeLegend);
+                      },
+                    ),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: includePoints,
+                      title: Text(l10n.includeMeasurementPoints),
+                      onChanged: (value) {
+                        setState(() => includePoints = value ?? includePoints);
+                      },
+                    ),
+                    const Divider(height: 24),
+                    DropdownButtonFormField<ThermalColorMap>(
+                      initialValue: settings.colorMap,
+                      decoration: InputDecoration(labelText: l10n.colorMap),
+                      items: [
+                        for (final value in ThermalColorMap.values)
+                          DropdownMenuItem(
+                            value: value,
+                            child: Text(value.label(l10n)),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          settings = settings.copyWith(colorMap: value);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<ThermalFilter>(
+                      initialValue: settings.filter,
+                      decoration: InputDecoration(labelText: l10n.filter),
+                      items: [
+                        for (final value in ThermalFilter.values)
+                          DropdownMenuItem(
+                            value: value,
+                            child: Text(value.label(l10n)),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          settings = settings.copyWith(filter: value);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _CompactSwitchRow(
+                      value: settings.upscaleEnabled,
+                      label: l10n.bilinear,
+                      onChanged: (value) {
+                        setState(() {
+                          settings = settings.copyWith(upscaleEnabled: value);
+                        });
+                      },
+                    ),
+                    _ExportAdvancedRenderSettings(
+                      settings: settings,
+                      label: l10n.advancedRenderSettings,
+                      horizontalFlipLabel: l10n.horizontalFlip,
+                      verticalFlipLabel: l10n.verticalFlip,
+                      onChanged: (value) => setState(() => settings = value),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(
+                  _LocalExportOptions(
+                    includeLegend: includeLegend,
+                    includePoints: includePoints,
+                    settings: settings,
+                  ),
+                ),
+                child: Text(l10n.sharePng),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
 class _LocalGalleryPreview extends ConsumerStatefulWidget {
   const _LocalGalleryPreview({required this.entry});
@@ -1116,6 +1378,20 @@ class _LocalGalleryPreview extends ConsumerStatefulWidget {
   @override
   ConsumerState<_LocalGalleryPreview> createState() =>
       _LocalGalleryPreviewState();
+}
+
+class _GalleryThumbnailFrame extends StatelessWidget {
+  const _GalleryThumbnailFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 2.05,
+      child: ClipRRect(borderRadius: BorderRadius.circular(6), child: child),
+    );
+  }
 }
 
 class _LocalGalleryPreviewState extends ConsumerState<_LocalGalleryPreview> {
@@ -1141,38 +1417,35 @@ class _LocalGalleryPreviewState extends ConsumerState<_LocalGalleryPreview> {
       thermalControllerProvider.select((state) => state.renderSettings),
     );
     final colorScheme = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: FutureBuilder<ThermalFrame?>(
-        future: _frameFuture,
-        builder: (context, snapshot) {
-          final frame = snapshot.data;
-          if (frame == null) {
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              child: Center(
-                child: snapshot.hasError
-                    ? Icon(
-                        Icons.broken_image_outlined,
-                        color: colorScheme.onSurfaceVariant,
-                      )
-                    : const SizedBox.square(
-                        dimension: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-              ),
-            );
-          }
-          return ThermalRasterView.frame(
-            frame,
-            settings: renderSettings,
-            scale: 4,
-            showOverlay: false,
+    return FutureBuilder<ThermalFrame?>(
+      future: _frameFuture,
+      builder: (context, snapshot) {
+        final frame = snapshot.data;
+        if (frame == null) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+            ),
+            child: Center(
+              child: snapshot.hasError
+                  ? Icon(
+                      Icons.broken_image_outlined,
+                      color: colorScheme.onSurfaceVariant,
+                    )
+                  : const SizedBox.square(
+                      dimension: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+            ),
           );
-        },
-      ),
+        }
+        return ThermalRasterView.frame(
+          frame,
+          settings: renderSettings,
+          scale: 4,
+          showOverlay: false,
+        );
+      },
     );
   }
 }
@@ -1273,6 +1546,9 @@ class _LocalUirPlaybackView extends ConsumerWidget {
     );
     final liveState = ref.watch(thermalControllerProvider);
     final liveController = ref.read(thermalControllerProvider.notifier);
+    final exporter = ThermalExporter(
+      repository: ref.read(uirRepositoryProvider),
+    );
     final filterControls = ControlPanel(
       state: liveState,
       controller: liveController,
@@ -1310,30 +1586,38 @@ class _LocalUirPlaybackView extends ConsumerWidget {
               controller: controller,
               series: series,
               points: points,
+              exporter: exporter,
             );
-            final sidePanel = Column(
-              children: [
-                filterControls,
-                const SizedBox(height: 12),
-                Expanded(child: controls),
-              ],
-            );
-            return wide
+            final bottomPanel = wide
                 ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: viewer),
-                      SizedBox(width: 320, child: sidePanel),
+                      SizedBox(width: 320, child: filterControls),
+                      const SizedBox(width: 12),
+                      Expanded(child: controls),
                     ],
                   )
                 : Column(
                     children: [
-                      Expanded(child: viewer),
-                      SizedBox(
-                        height: points.isEmpty ? 380 : 500,
-                        child: sidePanel,
-                      ),
+                      filterControls,
+                      const SizedBox(height: 12),
+                      Expanded(child: controls),
                     ],
                   );
+            final bottomHeight = wide
+                ? points.isEmpty
+                      ? 300.0
+                      : 420.0
+                : math.min(
+                    points.isEmpty ? 340.0 : 480.0,
+                    constraints.maxHeight * 0.62,
+                  );
+            return Column(
+              children: [
+                Expanded(child: viewer),
+                SizedBox(height: bottomHeight, child: bottomPanel),
+              ],
+            );
           },
         );
       },
@@ -1346,56 +1630,75 @@ class _PlaybackControls extends StatelessWidget {
     required this.controller,
     required this.series,
     required this.points,
+    required this.exporter,
   });
 
   final UirPlaybackController controller;
   final Map<String, List<TemperatureSample>> series;
   final List<ThermalPoint> points;
+  final ThermalExporter exporter;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final frameCount = controller.frameCount;
+    final sliderTheme = SliderTheme.of(context).copyWith(
+      trackHeight: 3,
+      overlayShape: SliderComponentShape.noOverlay,
+      tickMarkShape: SliderTickMarkShape.noTickMark,
+    );
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: l10n.previousFrame,
-                  onPressed: frameCount > 1 ? controller.stepBackward : null,
-                  icon: const Icon(Icons.skip_previous),
-                ),
-                FilledButton(
-                  onPressed: controller.isVideo ? controller.togglePlay : null,
-                  child: Icon(
-                    controller.isPlaying ? Icons.pause : Icons.play_arrow,
+            SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  IconButton(
+                    tooltip: l10n.previousFrame,
+                    onPressed: frameCount > 1 ? controller.stepBackward : null,
+                    icon: const Icon(Icons.skip_previous),
                   ),
-                ),
-                IconButton(
-                  tooltip: l10n.nextFrame,
-                  onPressed: frameCount > 1 ? controller.stepForward : null,
-                  icon: const Icon(Icons.skip_next),
-                ),
-                const Spacer(),
-                Text(
-                  '${controller.currentIndex + 1}/$frameCount',
-                  style: TextStyle(color: colorScheme.onSurfaceVariant),
-                ),
-              ],
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(88, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                    ),
+                    onPressed: controller.isVideo
+                        ? controller.togglePlay
+                        : null,
+                    child: Icon(
+                      controller.isPlaying ? Icons.pause : Icons.play_arrow,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: l10n.nextFrame,
+                    onPressed: frameCount > 1 ? controller.stepForward : null,
+                    icon: const Icon(Icons.skip_next),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${controller.currentIndex + 1}/$frameCount',
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
-            Slider(
-              value: controller.currentIndex.toDouble(),
-              min: 0,
-              max: math.max(0, frameCount - 1).toDouble(),
-              divisions: frameCount > 1 ? frameCount - 1 : null,
-              onChanged: frameCount > 1
-                  ? (value) => controller.seekToFrame(value.round())
-                  : null,
+            SliderTheme(
+              data: sliderTheme,
+              child: Slider(
+                value: controller.currentIndex.toDouble(),
+                min: 0,
+                max: math.max(0, frameCount - 1).toDouble(),
+                divisions: frameCount > 1 ? frameCount - 1 : null,
+                onChanged: frameCount > 1
+                    ? (value) => controller.seekToFrame(value.round())
+                    : null,
+              ),
             ),
             Text(
               '${_formatDuration(controller.position)} / ${_formatDuration(controller.duration)}',
@@ -1403,25 +1706,65 @@ class _PlaybackControls extends StatelessWidget {
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
-            SegmentedButton<double>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: 0.5, label: Text('0.5x')),
-                ButtonSegment(value: 1, label: Text('1x')),
-                ButtonSegment(value: 2, label: Text('2x')),
+            Row(
+              children: [
+                Expanded(child: Text(l10n.playbackSpeed)),
+                Text(
+                  '${controller.speed.toStringAsFixed(1)}x',
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                ),
               ],
-              selected: {controller.speed},
-              onSelectionChanged: (values) {
-                controller.setSpeed(values.first);
-              },
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: SliderTheme(
+                data: sliderTheme.copyWith(
+                  thumbShape: SliderComponentShape.noThumb,
+                ),
+                child: Slider(
+                  value: controller.speed,
+                  min: 0.5,
+                  max: 3,
+                  divisions: 25,
+                  label: '${controller.speed.toStringAsFixed(1)}x',
+                  onChanged: (value) {
+                    controller.setSpeed((value * 10).round() / 10);
+                  },
+                ),
+              ),
             ),
             if (points.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Expanded(
-                child: TemperatureCurveChart(
-                  series: series,
-                  points: points,
-                  cursor: controller.position,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 36,
+                      child: Row(
+                        children: [
+                          const Spacer(),
+                          OutlinedButton.icon(
+                            onPressed: () => _sharePlaybackCsv(context),
+                            icon: const Icon(Icons.table_chart_outlined),
+                            label: Text(l10n.shareCsv),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: TemperatureCurveChart(
+                        series: series,
+                        points: points,
+                        cursor: controller.position,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1429,6 +1772,27 @@ class _PlaybackControls extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _sharePlaybackCsv(BuildContext context) async {
+    final name = controller.document.metadata['name'] as String?;
+    final exportName = name != null && name.trim().isNotEmpty
+        ? '${name.trim()} temperature curve'
+        : 'temperature-curve';
+    try {
+      await exporter.shareCsvText(
+        name: exportName,
+        csv: temperatureSeriesCsv(
+          frames: controller.document.frames,
+          points: points,
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 }
 
@@ -1463,29 +1827,25 @@ class GalleryTile extends ConsumerWidget {
         ),
         child: Column(
           children: [
-            Expanded(
-              child: ThermalRasterView(
-                temperatures: photo.temperatures,
-                width: photo.width,
-                height: photo.height,
-                tMin: photo.tMin,
-                tMax: photo.tMax,
-                settings: renderSettings,
-                scale: 4,
-                showOverlay: false,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+              child: _GalleryThumbnailFrame(
+                child: ThermalRasterView(
+                  temperatures: photo.temperatures,
+                  width: photo.width,
+                  height: photo.height,
+                  tMin: photo.tMin,
+                  tMax: photo.tMax,
+                  settings: renderSettings,
+                  scale: 4,
+                  showOverlay: false,
+                ),
               ),
             ),
             ListTile(
               dense: true,
               title: Text(photo.filename, overflow: TextOverflow.ellipsis),
-              subtitle: Text(
-                l10n.photoStats(
-                  photo.width,
-                  photo.height,
-                  photo.tMax.toStringAsFixed(1),
-                  photo.tMin.toStringAsFixed(1),
-                ),
-              ),
+              subtitle: Text(_devicePhotoInfo(context, photo)),
               trailing: IconButton(
                 tooltip: l10n.delete,
                 icon: const Icon(Icons.delete_outline),
@@ -1693,46 +2053,19 @@ class ControlPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            SwitchListTile(
+            _CompactSwitchRow(
               value: settings.upscaleEnabled,
-              title: Text(l10n.bilinear),
+              label: l10n.bilinear,
               onChanged: (value) => controller.updateRenderSettings(
                 settings.copyWith(upscaleEnabled: value),
               ),
             ),
-            SwitchListTile(
-              value: settings.hflip,
-              title: Text(l10n.horizontalFlip),
-              onChanged: (value) => controller.updateRenderSettings(
-                settings.copyWith(hflip: value),
-              ),
-            ),
-            SwitchListTile(
-              value: settings.vflip,
-              title: Text(l10n.verticalFlip),
-              onChanged: (value) => controller.updateRenderSettings(
-                settings.copyWith(vflip: value),
-              ),
-            ),
-            const SizedBox(height: 6),
-            SegmentedButton<int>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: 0, label: RotationLabel('0')),
-                ButtonSegment(value: 90, label: RotationLabel('90')),
-                ButtonSegment(value: 180, label: RotationLabel('180')),
-                ButtonSegment(value: 270, label: RotationLabel('270')),
-              ],
-              style: const ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                padding: WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 8),
-                ),
-              ),
-              selected: {settings.rotation},
-              onSelectionChanged: (value) => controller.updateRenderSettings(
-                settings.copyWith(rotation: value.first),
-              ),
+            _AdvancedRenderSettings(
+              settings: settings,
+              controller: controller,
+              label: l10n.advancedRenderSettings,
+              horizontalFlipLabel: l10n.horizontalFlip,
+              verticalFlipLabel: l10n.verticalFlip,
             ),
             if (!compact) ...[
               const Divider(height: 28),
@@ -1751,6 +2084,322 @@ class ControlPanel extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompactSwitchRow extends StatelessWidget {
+  const _CompactSwitchRow({
+    required this.value,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final String label;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 10),
+          _MiniSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniSwitch extends StatelessWidget {
+  const _MiniSwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final trackColor = value
+        ? colorScheme.primary
+        : colorScheme.surfaceContainerHighest;
+    final borderColor = value ? colorScheme.primary : colorScheme.outline;
+    final thumbColor = value ? colorScheme.onPrimary : colorScheme.outline;
+    return Semantics(
+      toggled: value,
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          width: 42,
+          height: 24,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: trackColor,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOut,
+            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: thumbColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdvancedRenderSettings extends StatefulWidget {
+  const _AdvancedRenderSettings({
+    required this.settings,
+    required this.controller,
+    required this.label,
+    required this.horizontalFlipLabel,
+    required this.verticalFlipLabel,
+  });
+
+  final RenderSettings settings;
+  final ThermalController controller;
+  final String label;
+  final String horizontalFlipLabel;
+  final String verticalFlipLabel;
+
+  @override
+  State<_AdvancedRenderSettings> createState() =>
+      _AdvancedRenderSettingsState();
+}
+
+class _AdvancedRenderSettingsState extends State<_AdvancedRenderSettings> {
+  var _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final settings = widget.settings;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      margin: const EdgeInsets.only(top: 6),
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(6),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: SizedBox(
+              height: 30,
+              child: Row(
+                children: [
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            _CompactSwitchRow(
+              value: settings.hflip,
+              label: widget.horizontalFlipLabel,
+              onChanged: (value) => widget.controller.updateRenderSettings(
+                settings.copyWith(hflip: value),
+              ),
+            ),
+            _CompactSwitchRow(
+              value: settings.vflip,
+              label: widget.verticalFlipLabel,
+              onChanged: (value) => widget.controller.updateRenderSettings(
+                settings.copyWith(vflip: value),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _RotationPicker(
+              value: settings.rotation,
+              onChanged: (value) => widget.controller.updateRenderSettings(
+                settings.copyWith(rotation: value),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ExportAdvancedRenderSettings extends StatefulWidget {
+  const _ExportAdvancedRenderSettings({
+    required this.settings,
+    required this.label,
+    required this.horizontalFlipLabel,
+    required this.verticalFlipLabel,
+    required this.onChanged,
+  });
+
+  final RenderSettings settings;
+  final String label;
+  final String horizontalFlipLabel;
+  final String verticalFlipLabel;
+  final ValueChanged<RenderSettings> onChanged;
+
+  @override
+  State<_ExportAdvancedRenderSettings> createState() =>
+      _ExportAdvancedRenderSettingsState();
+}
+
+class _ExportAdvancedRenderSettingsState
+    extends State<_ExportAdvancedRenderSettings> {
+  var _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final settings = widget.settings;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      margin: const EdgeInsets.only(top: 6),
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(6),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: SizedBox(
+              height: 30,
+              child: Row(
+                children: [
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            _CompactSwitchRow(
+              value: settings.hflip,
+              label: widget.horizontalFlipLabel,
+              onChanged: (value) {
+                widget.onChanged(settings.copyWith(hflip: value));
+              },
+            ),
+            _CompactSwitchRow(
+              value: settings.vflip,
+              label: widget.verticalFlipLabel,
+              onChanged: (value) {
+                widget.onChanged(settings.copyWith(vflip: value));
+              },
+            ),
+            const SizedBox(height: 8),
+            _RotationPicker(
+              value: settings.rotation,
+              onChanged: (value) {
+                widget.onChanged(settings.copyWith(rotation: value));
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RotationPicker extends StatelessWidget {
+  const _RotationPicker({required this.value, required this.onChanged});
+
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    const values = [0, 90, 180, 270];
+    return Container(
+      height: 34,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          for (final item in values) ...[
+            Expanded(
+              child: InkWell(
+                onTap: () => onChanged(item),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  alignment: Alignment.center,
+                  color: value == item
+                      ? colorScheme.primaryContainer
+                      : Colors.transparent,
+                  child: Text(
+                    '$item',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: value == item
+                          ? colorScheme.onPrimaryContainer
+                          : colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (item != values.last)
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: colorScheme.outlineVariant,
+              ),
+          ],
+        ],
       ),
     );
   }

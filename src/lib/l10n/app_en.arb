@@ -113,18 +113,34 @@
   "capture": "Capture",
   "record": "Record",
   "stopRecording": "Stop",
+  "captureSaved": "Snapshot saved",
+  "recordingSaved": "Recording saved",
+  "advancedRenderSettings": "Image settings",
+  "playbackSpeed": "Playback speed",
   "localFiles": "Local: {count}",
   "@localFiles": {
     "placeholders": {
       "count": {}
     }
   },
+  "localFileBreakdown": "{photoCount} images · {videoCount} videos",
+  "@localFileBreakdown": {
+    "placeholders": {
+      "photoCount": {},
+      "videoCount": {}
+    }
+  },
   "deviceFilesSection": "Device files",
   "localRecordings": "Local recordings",
   "export": "Export",
-  "shareUir": "Share UIR",
-  "sharePng": "Share PNG",
-  "shareCsv": "Share CSV",
+  "shareUir": "Save UIR",
+  "sharePng": "Save PNG",
+  "shareApng": "Save APNG",
+  "shareCsv": "Save CSV",
+  "photoKind": "Photo",
+  "exportOptions": "Export options",
+  "includeLegend": "Show legend",
+  "includeMeasurementPoints": "Show measurement points",
   "previousFrame": "Previous frame",
   "nextFrame": "Next frame",
   "noReadableFrames": "No frames",

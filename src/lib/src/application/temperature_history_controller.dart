@@ -26,6 +26,12 @@ class TemperatureHistoryController extends Notifier<TemperatureHistoryState> {
 
   @override
   TemperatureHistoryState build() {
+    ref.listen<int>(
+      thermalControllerProvider.select((state) => state.streamSession),
+      (previous, next) {
+        if (previous != null && next != previous) clear();
+      },
+    );
     _subscription = ref
         .read(thermalControllerProvider.notifier)
         .frameStream

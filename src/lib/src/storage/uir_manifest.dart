@@ -13,6 +13,9 @@ class UirManifest {
     required this.width,
     required this.height,
     required this.sensorType,
+    required this.tMin,
+    required this.tMax,
+    required this.tAvg,
     required this.frameCount,
     this.duration,
   });
@@ -29,6 +32,17 @@ class UirManifest {
         ? GalleryKind.video
         : GalleryKind.photo;
     final duration = frames.isEmpty ? null : frames.last.elapsed;
+    var tMin = double.infinity;
+    var tMax = double.negativeInfinity;
+    var sum = 0.0;
+    var count = 0;
+    for (final record in frames) {
+      final frame = record.frame;
+      if (frame.tMin < tMin) tMin = frame.tMin;
+      if (frame.tMax > tMax) tMax = frame.tMax;
+      sum += frame.tAvg * frame.temperatures.length;
+      count += frame.temperatures.length;
+    }
     return UirManifest(
       id: id,
       filename: filename,
@@ -39,6 +53,9 @@ class UirManifest {
       width: document.header.width,
       height: document.header.height,
       sensorType: document.header.sensorType,
+      tMin: count == 0 ? 0 : tMin,
+      tMax: count == 0 ? 0 : tMax,
+      tAvg: count == 0 ? 0 : sum / count,
       frameCount: frames.length,
       duration: duration,
     );
@@ -53,6 +70,9 @@ class UirManifest {
   final int width;
   final int height;
   final ThermalSensorType sensorType;
+  final double tMin;
+  final double tMax;
+  final double tAvg;
   final int frameCount;
   final Duration? duration;
 
@@ -67,6 +87,9 @@ class UirManifest {
       width: width,
       height: height,
       sensorType: sensorType,
+      tMin: tMin,
+      tMax: tMax,
+      tAvg: tAvg,
       duration: duration,
       frameCount: frameCount,
     );

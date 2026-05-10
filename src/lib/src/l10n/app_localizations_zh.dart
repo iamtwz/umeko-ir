@@ -274,8 +274,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stopRecording => '停止';
 
   @override
+  String get captureSaved => '拍摄已保存';
+
+  @override
+  String get recordingSaved => '录制已保存';
+
+  @override
+  String get advancedRenderSettings => '画面设置';
+
+  @override
+  String get playbackSpeed => '播放速度';
+
+  @override
   String localFiles(Object count) {
     return '本地：$count';
+  }
+
+  @override
+  String localFileBreakdown(Object photoCount, Object videoCount) {
+    return '$photoCount 张图片 · $videoCount 段视频';
   }
 
   @override
@@ -288,13 +305,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get export => '导出';
 
   @override
-  String get shareUir => '分享 UIR';
+  String get shareUir => '保存 UIR';
 
   @override
-  String get sharePng => '分享 PNG';
+  String get sharePng => '保存 PNG';
 
   @override
-  String get shareCsv => '分享 CSV';
+  String get shareApng => '保存 APNG';
+
+  @override
+  String get shareCsv => '保存 CSV';
+
+  @override
+  String get photoKind => '图片';
+
+  @override
+  String get exportOptions => '导出选项';
+
+  @override
+  String get includeLegend => '显示图例';
+
+  @override
+  String get includeMeasurementPoints => '显示自定义点';
 
   @override
   String get previousFrame => '上一帧';

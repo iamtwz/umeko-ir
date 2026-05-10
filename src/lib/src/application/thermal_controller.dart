@@ -27,6 +27,7 @@ class ThermalState {
     this.selectedPort,
     this.connected = false,
     this.streaming = false,
+    this.streamSession = 0,
     this.currentFrame,
     this.gallery = const [],
     this.parserStats = const ParserStats.empty(),
@@ -44,6 +45,7 @@ class ThermalState {
   final SerialPortDescriptor? selectedPort;
   final bool connected;
   final bool streaming;
+  final int streamSession;
   final ThermalFrame? currentFrame;
   final List<DevicePhoto> gallery;
   final ParserStats parserStats;
@@ -61,6 +63,7 @@ class ThermalState {
     SerialPortDescriptor? selectedPort,
     bool? connected,
     bool? streaming,
+    int? streamSession,
     ThermalFrame? currentFrame,
     List<DevicePhoto>? gallery,
     ParserStats? parserStats,
@@ -82,6 +85,7 @@ class ThermalState {
           : selectedPort ?? this.selectedPort,
       connected: connected ?? this.connected,
       streaming: streaming ?? this.streaming,
+      streamSession: streamSession ?? this.streamSession,
       currentFrame: currentFrame ?? this.currentFrame,
       gallery: gallery ?? this.gallery,
       parserStats: parserStats ?? this.parserStats,
@@ -220,7 +224,11 @@ class ThermalController extends Notifier<ThermalState> {
     _streamHeartbeat = Timer.periodic(const Duration(milliseconds: 500), (_) {
       unawaited(_sendStreamHeartbeat());
     });
-    state = state.copyWith(streaming: true, parserStats: _parser.stats);
+    state = state.copyWith(
+      streaming: true,
+      streamSession: state.streamSession + 1,
+      parserStats: _parser.stats,
+    );
   }
 
   Future<void> stopStream() async {

@@ -26,6 +26,7 @@ class TemperatureCurveChart extends StatelessWidget {
       color: colorScheme.onSurfaceVariant,
       fontSize: 11,
     );
+    final firstElapsed = _firstElapsedSeconds(series, points);
     final lines = [
       for (final point in points)
         if ((series[point.id] ?? const []).isNotEmpty)
@@ -33,7 +34,7 @@ class TemperatureCurveChart extends StatelessWidget {
             spots: [
               for (final sample in series[point.id]!)
                 FlSpot(
-                  sample.elapsed.inMilliseconds / 1000,
+                  sample.elapsed.inMilliseconds / 1000 - firstElapsed,
                   sample.temperature,
                 ),
             ],
@@ -51,7 +52,9 @@ class TemperatureCurveChart extends StatelessWidget {
         ),
       );
     }
-    final cursorSeconds = cursor == null ? null : cursor!.inMilliseconds / 1000;
+    final cursorSeconds = cursor == null
+        ? null
+        : cursor!.inMilliseconds / 1000 - firstElapsed;
     final bounds = _ChartBounds.fromLines(lines);
     return LineChart(
       LineChartData(
@@ -75,11 +78,15 @@ class TemperatureCurveChart extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 46,
+              reservedSize: 52,
               interval: bounds.yInterval,
-              maxIncluded: false,
               getTitlesWidget: (value, meta) => SideTitleWidget(
                 meta: meta,
+                space: 6,
+                fitInside: SideTitleFitInsideData.fromTitleMeta(
+                  meta,
+                  distanceFromEdge: 2,
+                ),
                 child: Text(value.toStringAsFixed(1), style: textStyle),
               ),
             ),
@@ -87,12 +94,16 @@ class TemperatureCurveChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 26,
+              reservedSize: 34,
               interval: bounds.xInterval,
-              maxIncluded: false,
               getTitlesWidget: (value, meta) => SideTitleWidget(
                 meta: meta,
-                child: Text(value.toStringAsFixed(1), style: textStyle),
+                space: 8,
+                fitInside: SideTitleFitInsideData.fromTitleMeta(
+                  meta,
+                  distanceFromEdge: 2,
+                ),
+                child: Text(_formatElapsed(value), style: textStyle),
               ),
             ),
           ),
@@ -120,7 +131,7 @@ class TemperatureCurveChart extends StatelessWidget {
             getTooltipItems: (spots) => [
               for (final spot in spots)
                 LineTooltipItem(
-                  '${spot.x.toStringAsFixed(1)}s  ${spot.y.toStringAsFixed(1)}C',
+                  '${_formatElapsed(spot.x)}  ${spot.y.toStringAsFixed(1)}C',
                   TextStyle(
                     color: spot.bar.color ?? colorScheme.primary,
                     fontWeight: FontWeight.w700,
@@ -132,6 +143,27 @@ class TemperatureCurveChart extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatElapsed(double seconds) {
+    final duration = Duration(milliseconds: (seconds * 1000).round());
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final secs = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$secs';
+  }
+
+  double _firstElapsedSeconds(
+    Map<String, List<TemperatureSample>> series,
+    List<ThermalPoint> points,
+  ) {
+    double? first;
+    for (final point in points) {
+      for (final sample in series[point.id] ?? const <TemperatureSample>[]) {
+        final seconds = sample.elapsed.inMilliseconds / 1000;
+        if (first == null || seconds < first) first = seconds;
+      }
+    }
+    return first ?? 0;
   }
 }
 
@@ -175,13 +207,16 @@ class _ChartBounds {
     if (maxX <= minX) maxX = minX + 1;
     if (maxY <= minY) maxY = minY + 1;
 
+    final xInterval = _niceInterval(maxX - minX, targetSteps: 4);
+    final yInterval = _niceInterval(maxY - minY, targetSteps: 4);
+
     return _ChartBounds(
-      minX: minX,
-      maxX: maxX,
-      minY: minY,
-      maxY: maxY,
-      xInterval: _niceInterval(maxX - minX),
-      yInterval: _niceInterval(maxY - minY),
+      minX: _alignDown(minX, xInterval).clamp(0, double.infinity),
+      maxX: _alignUp(maxX, xInterval),
+      minY: _alignDown(minY, yInterval),
+      maxY: _alignUp(maxY, yInterval),
+      xInterval: xInterval,
+      yInterval: yInterval,
     );
   }
 
@@ -189,8 +224,8 @@ class _ChartBounds {
     return ((max - min).abs() * 0.08).clamp(minimum, double.infinity);
   }
 
-  static double _niceInterval(double range) {
-    final raw = range / 4;
+  static double _niceInterval(double range, {required int targetSteps}) {
+    final raw = range / targetSteps;
     if (raw <= 0) return 1;
     final magnitude = math.pow(10, (math.log(raw) / math.ln10).floor());
     final normalized = raw / magnitude;
@@ -202,5 +237,15 @@ class _ChartBounds {
         ? 5
         : 10;
     return nice * magnitude.toDouble();
+  }
+
+  static double _alignDown(double value, double interval) {
+    if (interval <= 0) return value;
+    return (value / interval).floorToDouble() * interval;
+  }
+
+  static double _alignUp(double value, double interval) {
+    if (interval <= 0) return value;
+    return (value / interval).ceilToDouble() * interval;
   }
 }

@@ -41,6 +41,18 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   writing separate JSON manifest files.
 - Fixed temperature curve axis labels and hover tooltips to use stable
   one-decimal formatting without overlapping labels.
+- Refined review controls by moving orientation controls into advanced
+  rendering, adding capture/recording save feedback, and replacing playback
+  speed presets with a 0.5x-3.0x slider.
+- Added CSV sharing for the currently displayed live and playback temperature
+  curves.
+- Split Gallery into device and local tabs, added PNG export options for
+  legends and measurement points, and changed curve time axes to MM:SS labels.
+- Matched PNG thermal exports to the in-app preview overlays and added export
+  controls for color maps, filters, bilinear rendering, and orientation.
+- Added APNG export for local video recordings, simplified local file export
+  menus, and aligned Gallery card metadata between device and local files.
+- Replaced Gallery card file-size metadata with temperature ranges.
 - Updated desktop and web default titles from the generated Flutter project name
   to `Umeko IR`.
 

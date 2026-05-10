@@ -276,8 +276,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get stopRecording => '停止';
 
   @override
+  String get captureSaved => '撮影を保存しました';
+
+  @override
+  String get recordingSaved => '録画を保存しました';
+
+  @override
+  String get advancedRenderSettings => '画面設定';
+
+  @override
+  String get playbackSpeed => '再生速度';
+
+  @override
   String localFiles(Object count) {
     return 'ローカル: $count';
+  }
+
+  @override
+  String localFileBreakdown(Object photoCount, Object videoCount) {
+    return '画像 $photoCount 件 · 動画 $videoCount 件';
   }
 
   @override
@@ -290,13 +307,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get export => 'エクスポート';
 
   @override
-  String get shareUir => 'UIR を共有';
+  String get shareUir => 'UIR を保存';
 
   @override
-  String get sharePng => 'PNG を共有';
+  String get sharePng => 'PNG を保存';
 
   @override
-  String get shareCsv => 'CSV を共有';
+  String get shareApng => 'APNG を保存';
+
+  @override
+  String get shareCsv => 'CSV を保存';
+
+  @override
+  String get photoKind => '画像';
+
+  @override
+  String get exportOptions => 'エクスポート設定';
+
+  @override
+  String get includeLegend => '凡例を表示';
+
+  @override
+  String get includeMeasurementPoints => '測定点を表示';
 
   @override
   String get previousFrame => '前のフレーム';
