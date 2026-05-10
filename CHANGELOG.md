@@ -34,6 +34,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Fixed
 
+- Unified local and device gallery previews so local UIR files show thermal
+  thumbnails, single-frame UIR files use image review controls, and multi-frame
+  UIR files keep editable points and temperature curves during playback.
+- Fixed temperature curve axis labels and hover tooltips to use stable
+  one-decimal formatting without overlapping labels.
 - Updated desktop and web default titles from the generated Flutter project name
   to `Umeko IR`.
 

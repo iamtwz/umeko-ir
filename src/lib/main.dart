@@ -21,6 +21,7 @@ import 'src/core/temperature_series.dart';
 import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
 import 'src/core/thermal_points.dart';
+import 'src/core/thermal_frame.dart';
 import 'src/core/thermal_rendering.dart';
 import 'src/export/thermal_export.dart';
 import 'src/l10n/app_localizations.dart';
@@ -1049,7 +1050,9 @@ class LocalGalleryTile extends ConsumerWidget {
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: 10),
+              Expanded(child: _LocalGalleryPreview(entry: entry)),
+              const SizedBox(height: 10),
               Text(
                 entry.name,
                 maxLines: 2,
@@ -1105,6 +1108,75 @@ class LocalGalleryTile extends ConsumerWidget {
 
 enum _LocalExportAction { uir, png, csv }
 
+class _LocalGalleryPreview extends ConsumerStatefulWidget {
+  const _LocalGalleryPreview({required this.entry});
+
+  final GalleryEntry entry;
+
+  @override
+  ConsumerState<_LocalGalleryPreview> createState() =>
+      _LocalGalleryPreviewState();
+}
+
+class _LocalGalleryPreviewState extends ConsumerState<_LocalGalleryPreview> {
+  late final Future<ThermalFrame?> _frameFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _frameFuture = _loadFirstFrame();
+  }
+
+  Future<ThermalFrame?> _loadFirstFrame() async {
+    final bytes = await ref
+        .read(uirRepositoryProvider)
+        .readBytes(widget.entry.id);
+    final document = const UirReader().read(bytes);
+    return document.frames.isEmpty ? null : document.frames.first.frame;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final renderSettings = ref.watch(
+      thermalControllerProvider.select((state) => state.renderSettings),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: FutureBuilder<ThermalFrame?>(
+        future: _frameFuture,
+        builder: (context, snapshot) {
+          final frame = snapshot.data;
+          if (frame == null) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+              ),
+              child: Center(
+                child: snapshot.hasError
+                    ? Icon(
+                        Icons.broken_image_outlined,
+                        color: colorScheme.onSurfaceVariant,
+                      )
+                    : const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+              ),
+            );
+          }
+          return ThermalRasterView.frame(
+            frame,
+            settings: renderSettings,
+            scale: 4,
+            showOverlay: false,
+          );
+        },
+      ),
+    );
+  }
+}
+
 class LocalUirViewer extends ConsumerStatefulWidget {
   const LocalUirViewer({super.key, required this.entry});
 
@@ -1151,8 +1223,39 @@ class _LocalUirViewerState extends ConsumerState<LocalUirViewer> {
               ? Center(child: Text(snapshot.error.toString()))
               : controller == null
               ? const Center(child: CircularProgressIndicator())
-              : _LocalUirPlaybackView(controller: controller),
+              : controller.isVideo
+              ? _LocalUirPlaybackView(controller: controller)
+              : _LocalUirPhotoView(controller: controller),
         );
+      },
+    );
+  }
+}
+
+class _LocalUirPhotoView extends StatelessWidget {
+  const _LocalUirPhotoView({required this.controller});
+
+  final UirPlaybackController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final frame = controller.currentFrame;
+        return frame == null
+            ? EmptyPanel(
+                icon: Icons.broken_image_outlined,
+                title: context.l10n.noReadableFrames,
+                subtitle: context.l10n.noReadableFramesMessage,
+              )
+            : _ThermalFrameReviewView(
+                frame: frame,
+                points: controller.points,
+                onPointAdded: controller.addPoint,
+                onPointMoved: controller.movePoint,
+                onPointRemoved: controller.removePoint,
+              );
       },
     );
   }
@@ -1168,14 +1271,22 @@ class _LocalUirPlaybackView extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
-    final points = controller.points;
-    final series = buildTemperatureSeries(
-      frames: controller.document.frames,
-      points: points,
+    final liveState = ref.watch(thermalControllerProvider);
+    final liveController = ref.read(thermalControllerProvider.notifier);
+    final filterControls = ControlPanel(
+      state: liveState,
+      controller: liveController,
+      compact: true,
+      showStreamButton: false,
     );
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
+        final points = controller.points;
+        final series = buildTemperatureSeries(
+          frames: controller.document.frames,
+          points: points,
+        );
         final frame = controller.currentFrame;
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -1200,17 +1311,27 @@ class _LocalUirPlaybackView extends ConsumerWidget {
               series: series,
               points: points,
             );
+            final sidePanel = Column(
+              children: [
+                filterControls,
+                const SizedBox(height: 12),
+                Expanded(child: controls),
+              ],
+            );
             return wide
                 ? Row(
                     children: [
                       Expanded(child: viewer),
-                      SizedBox(width: 320, child: controls),
+                      SizedBox(width: 320, child: sidePanel),
                     ],
                   )
                 : Column(
                     children: [
                       Expanded(child: viewer),
-                      SizedBox(height: 190, child: controls),
+                      SizedBox(
+                        height: points.isEmpty ? 380 : 500,
+                        child: sidePanel,
+                      ),
                     ],
                   );
           },
@@ -1334,49 +1455,9 @@ class GalleryTile extends ConsumerWidget {
         onTap: () => showDialog<void>(
           context: context,
           builder: (_) => Dialog.fullscreen(
-            child: Consumer(
-              builder: (context, ref, _) {
-                final liveState = ref.watch(thermalControllerProvider);
-                final liveController = ref.read(
-                  thermalControllerProvider.notifier,
-                );
-                return Scaffold(
-                  appBar: AppBar(title: Text(photo.filename)),
-                  body: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final wide = constraints.maxWidth >= 900;
-                      final viewer = ThermalRasterView(
-                        temperatures: photo.temperatures,
-                        width: photo.width,
-                        height: photo.height,
-                        tMin: photo.tMin,
-                        tMax: photo.tMax,
-                        settings: liveState.renderSettings,
-                        scale: wide ? 10 : 8,
-                      );
-                      final controls = ControlPanel(
-                        state: liveState,
-                        controller: liveController,
-                        compact: true,
-                        showStreamButton: false,
-                      );
-                      return wide
-                          ? Row(
-                              children: [
-                                Expanded(child: viewer),
-                                SizedBox(width: 320, child: controls),
-                              ],
-                            )
-                          : Column(
-                              children: [
-                                Expanded(child: viewer),
-                                SizedBox(height: 260, child: controls),
-                              ],
-                            );
-                    },
-                  ),
-                );
-              },
+            child: Scaffold(
+              appBar: AppBar(title: Text(photo.filename)),
+              body: _DevicePhotoViewer(photo: photo),
             ),
           ),
         ),
@@ -1418,6 +1499,147 @@ class GalleryTile extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _DevicePhotoViewer extends StatefulWidget {
+  const _DevicePhotoViewer({required this.photo});
+
+  final DevicePhoto photo;
+
+  @override
+  State<_DevicePhotoViewer> createState() => _DevicePhotoViewerState();
+}
+
+class _DevicePhotoViewerState extends State<_DevicePhotoViewer> {
+  var _points = const <ThermalPoint>[];
+
+  @override
+  Widget build(BuildContext context) {
+    return _ThermalFrameReviewView(
+      frame: _frameFromDevicePhoto(widget.photo),
+      points: _points,
+      onPointAdded: _addPoint,
+      onPointMoved: _movePoint,
+      onPointRemoved: _removePoint,
+    );
+  }
+
+  void _addPoint(double xNorm, double yNorm) {
+    final label = 'P${_points.length + 1}';
+    setState(() {
+      _points = [
+        ..._points,
+        ThermalPoint(
+          id: 'device-point-${DateTime.now().microsecondsSinceEpoch}',
+          xNorm: xNorm.clamp(0.0, 1.0),
+          yNorm: yNorm.clamp(0.0, 1.0),
+          label: label,
+          colorArgb: _pointColorForIndex(_points.length),
+        ),
+      ];
+    });
+  }
+
+  void _movePoint(String id, double xNorm, double yNorm) {
+    setState(() {
+      _points = [
+        for (final point in _points)
+          point.id == id
+              ? point.copyWith(
+                  xNorm: xNorm.clamp(0.0, 1.0),
+                  yNorm: yNorm.clamp(0.0, 1.0),
+                )
+              : point,
+      ];
+    });
+  }
+
+  void _removePoint(String id) {
+    setState(() {
+      _points = _points.where((point) => point.id != id).toList();
+    });
+  }
+}
+
+class _ThermalFrameReviewView extends ConsumerWidget {
+  const _ThermalFrameReviewView({
+    required this.frame,
+    required this.points,
+    required this.onPointAdded,
+    required this.onPointMoved,
+    required this.onPointRemoved,
+  });
+
+  final ThermalFrame frame;
+  final List<ThermalPoint> points;
+  final void Function(double xNorm, double yNorm) onPointAdded;
+  final void Function(String id, double xNorm, double yNorm) onPointMoved;
+  final void Function(String id) onPointRemoved;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final liveState = ref.watch(thermalControllerProvider);
+    final liveController = ref.read(thermalControllerProvider.notifier);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 900;
+        final viewer = ThermalRasterView.frame(
+          frame,
+          settings: liveState.renderSettings,
+          scale: wide ? 10 : 8,
+          points: points,
+          onPointAdded: onPointAdded,
+          onPointMoved: onPointMoved,
+          onPointRemoved: onPointRemoved,
+        );
+        final controls = ControlPanel(
+          state: liveState,
+          controller: liveController,
+          compact: true,
+          showStreamButton: false,
+        );
+        return wide
+            ? Row(
+                children: [
+                  Expanded(child: viewer),
+                  SizedBox(width: 320, child: controls),
+                ],
+              )
+            : Column(
+                children: [
+                  Expanded(child: viewer),
+                  SizedBox(height: 260, child: controls),
+                ],
+              );
+      },
+    );
+  }
+}
+
+ThermalFrame _frameFromDevicePhoto(DevicePhoto photo) {
+  return ThermalFrame(
+    id: photo.filename,
+    timestamp: DateTime.fromMicrosecondsSinceEpoch(0),
+    temperatures: photo.temperatures,
+    width: photo.width,
+    height: photo.height,
+    sensorType: ThermalSensorType.legacy,
+    tMin: photo.tMin,
+    tMax: photo.tMax,
+    tAvg: photo.tAvg,
+  );
+}
+
+int _pointColorForIndex(int index) {
+  const colors = [
+    0xffffd166,
+    0xff06d6a0,
+    0xffef476f,
+    0xff118ab2,
+    0xfff78c6b,
+    0xffc77dff,
+  ];
+  return colors[index % colors.length];
 }
 
 class ControlPanel extends StatelessWidget {
