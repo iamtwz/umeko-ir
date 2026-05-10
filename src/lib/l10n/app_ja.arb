@@ -86,5 +86,21 @@
   "filterGaussian": "Gaussian",
   "filterSharpen": "Sharpen",
   "filterSobel": "Sobel",
-  "filterEmboss": "Emboss"
+  "filterEmboss": "Emboss",
+  "capture": "撮影",
+  "record": "録画",
+  "stopRecording": "停止",
+  "localFiles": "ローカル: {count}",
+  "deviceFilesSection": "デバイスファイル",
+  "localRecordings": "ローカル録画",
+  "export": "エクスポート",
+  "shareUir": "UIR を共有",
+  "sharePng": "PNG を共有",
+  "shareCsv": "CSV を共有",
+  "previousFrame": "前のフレーム",
+  "nextFrame": "次のフレーム",
+  "noReadableFrames": "フレームなし",
+  "noReadableFramesMessage": "この UIR ファイルには読み取り可能なフレームがありません。",
+  "noPointSamples": "測定点サンプルなし",
+  "framesMetric": "{count} フレーム"
 }

@@ -267,4 +267,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterEmboss => 'Emboss';
+
+  @override
+  String get capture => 'Capture';
+
+  @override
+  String get record => 'Record';
+
+  @override
+  String get stopRecording => 'Stop';
+
+  @override
+  String localFiles(Object count) {
+    return 'Local: $count';
+  }
+
+  @override
+  String get deviceFilesSection => 'Device files';
+
+  @override
+  String get localRecordings => 'Local recordings';
+
+  @override
+  String get export => 'Export';
+
+  @override
+  String get shareUir => 'Share UIR';
+
+  @override
+  String get sharePng => 'Share PNG';
+
+  @override
+  String get shareCsv => 'Share CSV';
+
+  @override
+  String get previousFrame => 'Previous frame';
+
+  @override
+  String get nextFrame => 'Next frame';
+
+  @override
+  String get noReadableFrames => 'No frames';
+
+  @override
+  String get noReadableFramesMessage =>
+      'This UIR file does not contain readable frames.';
+
+  @override
+  String get noPointSamples => 'No point samples';
+
+  @override
+  String framesMetric(Object count) {
+    return '$count frames';
+  }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../core/temperature_series.dart';
 import '../core/thermal_points.dart';
+import '../l10n/app_localizations.dart';
 
 class TemperatureCurveChart extends StatelessWidget {
   const TemperatureCurveChart({
@@ -39,7 +40,7 @@ class TemperatureCurveChart extends StatelessWidget {
     if (lines.isEmpty) {
       return Center(
         child: Text(
-          'No point samples',
+          AppLocalizations.of(context)!.noPointSamples,
           style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
       );

@@ -265,4 +265,56 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get filterEmboss => 'Emboss';
+
+  @override
+  String get capture => '撮影';
+
+  @override
+  String get record => '録画';
+
+  @override
+  String get stopRecording => '停止';
+
+  @override
+  String localFiles(Object count) {
+    return 'ローカル: $count';
+  }
+
+  @override
+  String get deviceFilesSection => 'デバイスファイル';
+
+  @override
+  String get localRecordings => 'ローカル録画';
+
+  @override
+  String get export => 'エクスポート';
+
+  @override
+  String get shareUir => 'UIR を共有';
+
+  @override
+  String get sharePng => 'PNG を共有';
+
+  @override
+  String get shareCsv => 'CSV を共有';
+
+  @override
+  String get previousFrame => '前のフレーム';
+
+  @override
+  String get nextFrame => '次のフレーム';
+
+  @override
+  String get noReadableFrames => 'フレームなし';
+
+  @override
+  String get noReadableFramesMessage => 'この UIR ファイルには読み取り可能なフレームがありません。';
+
+  @override
+  String get noPointSamples => '測定点サンプルなし';
+
+  @override
+  String framesMetric(Object count) {
+    return '$count フレーム';
+  }
 }

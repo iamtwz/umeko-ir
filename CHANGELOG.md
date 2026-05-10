@@ -9,6 +9,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Added local UIR recording for snapshots and multi-frame thermal videos.
+- Added UIR v1 storage with explicit format versioning, frame CRC checks, and
+  0.01 °C quantized zlib compression.
+- Added local recording storage, Gallery entries for local files, and playback
+  controls for recorded UIR videos.
+- Added custom measurement points with live temperature labels, dragging, and
+  deletion.
+- Added live and playback temperature curves for custom points.
+- Added sharing/export actions for local UIR recordings, PNG snapshots, and CSV
+  point temperature curves on supported platforms.
 - Added a build channel switch for release and dev builds.
 - Added Android dev build identity so CI/test APKs can be installed alongside
   the production APK.

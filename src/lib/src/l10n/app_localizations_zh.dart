@@ -263,4 +263,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get filterEmboss => 'Emboss';
+
+  @override
+  String get capture => '拍摄';
+
+  @override
+  String get record => '录制';
+
+  @override
+  String get stopRecording => '停止';
+
+  @override
+  String localFiles(Object count) {
+    return '本地：$count';
+  }
+
+  @override
+  String get deviceFilesSection => '设备文件';
+
+  @override
+  String get localRecordings => '本地录制';
+
+  @override
+  String get export => '导出';
+
+  @override
+  String get shareUir => '分享 UIR';
+
+  @override
+  String get sharePng => '分享 PNG';
+
+  @override
+  String get shareCsv => '分享 CSV';
+
+  @override
+  String get previousFrame => '上一帧';
+
+  @override
+  String get nextFrame => '下一帧';
+
+  @override
+  String get noReadableFrames => '无可读帧';
+
+  @override
+  String get noReadableFramesMessage => '此 UIR 文件不包含可读取的帧。';
+
+  @override
+  String get noPointSamples => '暂无测温点数据';
+
+  @override
+  String framesMetric(Object count) {
+    return '$count 帧';
+  }
 }

@@ -696,6 +696,7 @@ class RecordingControls extends ConsumerWidget {
     );
     final recorder = ref.watch(recorderControllerProvider);
     final controller = ref.read(recorderControllerProvider.notifier);
+    final l10n = context.l10n;
     final busy = recorder.status == RecorderStatus.finalizing;
     final canUseFrame = frame != null && !busy;
     final colorScheme = Theme.of(context).colorScheme;
@@ -713,7 +714,7 @@ class RecordingControls extends ConsumerWidget {
                         ? () => controller.captureSnapshot()
                         : null,
                     icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Capture'),
+                    label: Text(l10n.capture),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -722,14 +723,14 @@ class RecordingControls extends ConsumerWidget {
                       ? FilledButton.icon(
                           onPressed: busy ? null : controller.stopRecording,
                           icon: const Icon(Icons.stop),
-                          label: const Text('Stop'),
+                          label: Text(l10n.stopRecording),
                         )
                       : FilledButton.icon(
                           onPressed: canUseFrame
                               ? () => controller.startRecording()
                               : null,
                           icon: const Icon(Icons.fiber_manual_record),
-                          label: const Text('Record'),
+                          label: Text(l10n.record),
                         ),
                 ),
               ],
@@ -748,7 +749,7 @@ class RecordingControls extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${recorder.frameCount} frames  ${_formatDuration(recorder.elapsed)}',
+                      '${l10n.framesMetric(recorder.frameCount)}  ${_formatDuration(recorder.elapsed)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: colorScheme.onSurfaceVariant),
@@ -861,7 +862,7 @@ class GalleryPane extends ConsumerWidget {
               ),
               const Spacer(),
               Text(
-                '${l10n.deviceFiles(state.gallery.length)}  Local: ${localEntries.length}',
+                '${l10n.deviceFiles(state.gallery.length)}  ${l10n.localFiles(localEntries.length)}',
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
             ],
@@ -898,7 +899,7 @@ class GalleryPane extends ConsumerWidget {
                       if (state.gallery.isNotEmpty) ...[
                         SliverToBoxAdapter(
                           child: _GallerySectionHeader(
-                            title: 'Device files',
+                            title: l10n.deviceFilesSection,
                             count: state.gallery.length,
                           ),
                         ),
@@ -930,7 +931,7 @@ class GalleryPane extends ConsumerWidget {
                       if (localEntries.isNotEmpty) ...[
                         SliverToBoxAdapter(
                           child: _GallerySectionHeader(
-                            title: 'Local recordings',
+                            title: l10n.localRecordings,
                             count: localEntries.length,
                           ),
                         ),
@@ -997,6 +998,7 @@ class LocalGalleryTile extends ConsumerWidget {
     final exporter = ThermalExporter(
       repository: ref.read(uirRepositoryProvider),
     );
+    final l10n = context.l10n;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1020,7 +1022,7 @@ class LocalGalleryTile extends ConsumerWidget {
                   ),
                   const Spacer(),
                   PopupMenuButton<_LocalExportAction>(
-                    tooltip: 'Export',
+                    tooltip: l10n.export,
                     onSelected: (action) => _exportLocalEntry(
                       context,
                       action,
@@ -1028,18 +1030,18 @@ class LocalGalleryTile extends ConsumerWidget {
                       renderSettings,
                       points,
                     ),
-                    itemBuilder: (context) => const [
+                    itemBuilder: (context) => [
                       PopupMenuItem(
                         value: _LocalExportAction.uir,
-                        child: Text('Share UIR'),
+                        child: Text(l10n.shareUir),
                       ),
                       PopupMenuItem(
                         value: _LocalExportAction.png,
-                        child: Text('Share PNG'),
+                        child: Text(l10n.sharePng),
                       ),
                       PopupMenuItem(
                         value: _LocalExportAction.csv,
-                        child: Text('Share CSV'),
+                        child: Text(l10n.shareCsv),
                       ),
                     ],
                     child: const Icon(Icons.more_vert),
@@ -1057,7 +1059,8 @@ class LocalGalleryTile extends ConsumerWidget {
               Text(
                 [
                   '${entry.width}x${entry.height}',
-                  if (entry.frameCount != null) '${entry.frameCount} frames',
+                  if (entry.frameCount != null)
+                    l10n.framesMetric(entry.frameCount!),
                   if (duration != null) _formatDuration(duration),
                   _formatBytes(entry.sizeBytes),
                 ].join('  '),
@@ -1179,10 +1182,10 @@ class _LocalUirPlaybackView extends ConsumerWidget {
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 900;
             final viewer = frame == null
-                ? const EmptyPanel(
+                ? EmptyPanel(
                     icon: Icons.broken_image_outlined,
-                    title: 'No frames',
-                    subtitle: 'This UIR file does not contain readable frames.',
+                    title: context.l10n.noReadableFrames,
+                    subtitle: context.l10n.noReadableFramesMessage,
                   )
                 : ThermalRasterView.frame(
                     frame,
@@ -1232,6 +1235,7 @@ class _PlaybackControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     final frameCount = controller.frameCount;
     return Card(
       child: Padding(
@@ -1242,7 +1246,7 @@ class _PlaybackControls extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  tooltip: 'Previous frame',
+                  tooltip: l10n.previousFrame,
                   onPressed: frameCount > 1 ? controller.stepBackward : null,
                   icon: const Icon(Icons.skip_previous),
                 ),
@@ -1253,7 +1257,7 @@ class _PlaybackControls extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Next frame',
+                  tooltip: l10n.nextFrame,
                   onPressed: frameCount > 1 ? controller.stepForward : null,
                   icon: const Icon(Icons.skip_next),
                 ),

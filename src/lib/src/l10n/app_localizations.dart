@@ -591,6 +591,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Emboss'**
   String get filterEmboss;
+
+  /// No description provided for @capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture'**
+  String get capture;
+
+  /// No description provided for @record.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get record;
+
+  /// No description provided for @stopRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stopRecording;
+
+  /// No description provided for @localFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Local: {count}'**
+  String localFiles(Object count);
+
+  /// No description provided for @deviceFilesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Device files'**
+  String get deviceFilesSection;
+
+  /// No description provided for @localRecordings.
+  ///
+  /// In en, this message translates to:
+  /// **'Local recordings'**
+  String get localRecordings;
+
+  /// No description provided for @export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get export;
+
+  /// No description provided for @shareUir.
+  ///
+  /// In en, this message translates to:
+  /// **'Share UIR'**
+  String get shareUir;
+
+  /// No description provided for @sharePng.
+  ///
+  /// In en, this message translates to:
+  /// **'Share PNG'**
+  String get sharePng;
+
+  /// No description provided for @shareCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Share CSV'**
+  String get shareCsv;
+
+  /// No description provided for @previousFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous frame'**
+  String get previousFrame;
+
+  /// No description provided for @nextFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Next frame'**
+  String get nextFrame;
+
+  /// No description provided for @noReadableFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'No frames'**
+  String get noReadableFrames;
+
+  /// No description provided for @noReadableFramesMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This UIR file does not contain readable frames.'**
+  String get noReadableFramesMessage;
+
+  /// No description provided for @noPointSamples.
+  ///
+  /// In en, this message translates to:
+  /// **'No point samples'**
+  String get noPointSamples;
+
+  /// No description provided for @framesMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} frames'**
+  String framesMetric(Object count);
 }
 
 class _AppLocalizationsDelegate

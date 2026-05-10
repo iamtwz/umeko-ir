@@ -109,5 +109,31 @@
   "filterGaussian": "Gaussian",
   "filterSharpen": "Sharpen",
   "filterSobel": "Sobel",
-  "filterEmboss": "Emboss"
+  "filterEmboss": "Emboss",
+  "capture": "Capture",
+  "record": "Record",
+  "stopRecording": "Stop",
+  "localFiles": "Local: {count}",
+  "@localFiles": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "deviceFilesSection": "Device files",
+  "localRecordings": "Local recordings",
+  "export": "Export",
+  "shareUir": "Share UIR",
+  "sharePng": "Share PNG",
+  "shareCsv": "Share CSV",
+  "previousFrame": "Previous frame",
+  "nextFrame": "Next frame",
+  "noReadableFrames": "No frames",
+  "noReadableFramesMessage": "This UIR file does not contain readable frames.",
+  "noPointSamples": "No point samples",
+  "framesMetric": "{count} frames",
+  "@framesMetric": {
+    "placeholders": {
+      "count": {}
+    }
+  }
 }

@@ -86,5 +86,21 @@
   "filterGaussian": "Gaussian",
   "filterSharpen": "Sharpen",
   "filterSobel": "Sobel",
-  "filterEmboss": "Emboss"
+  "filterEmboss": "Emboss",
+  "capture": "拍摄",
+  "record": "录制",
+  "stopRecording": "停止",
+  "localFiles": "本地：{count}",
+  "deviceFilesSection": "设备文件",
+  "localRecordings": "本地录制",
+  "export": "导出",
+  "shareUir": "分享 UIR",
+  "sharePng": "分享 PNG",
+  "shareCsv": "分享 CSV",
+  "previousFrame": "上一帧",
+  "nextFrame": "下一帧",
+  "noReadableFrames": "无可读帧",
+  "noReadableFramesMessage": "此 UIR 文件不包含可读取的帧。",
+  "noPointSamples": "暂无测温点数据",
+  "framesMetric": "{count} 帧"
 }
