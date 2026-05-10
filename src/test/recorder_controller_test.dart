@@ -86,6 +86,9 @@ class _MemoryUirRepository implements UirRepository {
   final entries = <GalleryEntry>[];
 
   @override
+  bool get isAvailable => true;
+
+  @override
   Future<void> delete(String id) async {
     entries.removeWhere((entry) => entry.id == id);
   }

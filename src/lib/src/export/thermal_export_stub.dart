@@ -1,4 +1,3 @@
-import '../core/thermal_points.dart';
 import '../core/thermal_rendering.dart';
 import '../storage/gallery_entry.dart';
 import '../storage/uir_repository_base.dart';
@@ -14,7 +13,7 @@ class ThermalExporter {
     );
   }
 
-  Future<void> shareCsv(GalleryEntry entry, List<ThermalPoint> points) async {
+  Future<void> shareCsv(GalleryEntry entry) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',
     );
@@ -22,7 +21,6 @@ class ThermalExporter {
 
   Future<void> sharePng(
     GalleryEntry entry,
-    List<ThermalPoint> points,
     RenderSettings settings, {
     bool includePoints = true,
   }) async {

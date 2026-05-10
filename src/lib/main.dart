@@ -696,9 +696,12 @@ class RecordingControls extends ConsumerWidget {
     );
     final recorder = ref.watch(recorderControllerProvider);
     final controller = ref.read(recorderControllerProvider.notifier);
+    final storageAvailable = ref.watch(
+      uirRepositoryProvider.select((repository) => repository.isAvailable),
+    );
     final l10n = context.l10n;
     final busy = recorder.status == RecorderStatus.finalizing;
-    final canUseFrame = frame != null && !busy;
+    final canUseFrame = frame != null && !busy && storageAvailable;
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
@@ -994,7 +997,6 @@ class LocalGalleryTile extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
-    final points = ref.watch(thermalPointsProvider);
     final exporter = ThermalExporter(
       repository: ref.read(uirRepositoryProvider),
     );
@@ -1028,7 +1030,6 @@ class LocalGalleryTile extends ConsumerWidget {
                       action,
                       exporter,
                       renderSettings,
-                      points,
                     ),
                     itemBuilder: (context) => [
                       PopupMenuItem(
@@ -1083,16 +1084,15 @@ class LocalGalleryTile extends ConsumerWidget {
     _LocalExportAction action,
     ThermalExporter exporter,
     RenderSettings renderSettings,
-    List<ThermalPoint> points,
   ) async {
     try {
       switch (action) {
         case _LocalExportAction.uir:
           await exporter.shareUir(entry);
         case _LocalExportAction.png:
-          await exporter.sharePng(entry, points, renderSettings);
+          await exporter.sharePng(entry, renderSettings);
         case _LocalExportAction.csv:
-          await exporter.shareCsv(entry, points);
+          await exporter.shareCsv(entry);
       }
     } catch (error) {
       if (!context.mounted) return;
@@ -1168,8 +1168,7 @@ class _LocalUirPlaybackView extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
-    final points = ref.watch(thermalPointsProvider);
-    final pointsController = ref.read(thermalPointsProvider.notifier);
+    final points = controller.points;
     final series = buildTemperatureSeries(
       frames: controller.document.frames,
       points: points,
@@ -1192,9 +1191,9 @@ class _LocalUirPlaybackView extends ConsumerWidget {
                     settings: renderSettings,
                     scale: wide ? 10 : 8,
                     points: points,
-                    onPointAdded: pointsController.add,
-                    onPointMoved: pointsController.move,
-                    onPointRemoved: pointsController.remove,
+                    onPointAdded: controller.addPoint,
+                    onPointMoved: controller.movePoint,
+                    onPointRemoved: controller.removePoint,
                   );
             final controls = _PlaybackControls(
               controller: controller,

@@ -37,6 +37,37 @@ void main() {
     controller.setSpeed(0.1);
     expect(controller.speed, 0.25);
   });
+
+  test('restores measurement points from UIR metadata', () {
+    final createdAt = DateTime.utc(2026, 5, 10, 12);
+    final writer = UirByteWriter(
+      width: 4,
+      height: 3,
+      sensorType: ThermalSensorType.mlx90640,
+      createdAt: createdAt,
+    );
+    writer.writeMetadata({
+      'points': [
+        {
+          'id': 'p1',
+          'xNorm': 0.25,
+          'yNorm': 0.5,
+          'label': 'P1',
+          'colorArgb': 0xffffd166,
+        },
+      ],
+    });
+    writer.writeFrame(_frame(0, createdAt), elapsed: Duration.zero);
+
+    final controller = UirPlaybackController(
+      const UirReader().read(writer.finish()),
+    );
+    addTearDown(controller.dispose);
+
+    expect(controller.points, hasLength(1));
+    expect(controller.points.single.id, 'p1');
+    expect(controller.points.single.xNorm, 0.25);
+  });
 }
 
 UirDocument _document() {

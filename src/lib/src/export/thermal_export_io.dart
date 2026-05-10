@@ -26,12 +26,13 @@ class ThermalExporter {
     );
   }
 
-  Future<void> shareCsv(GalleryEntry entry, List<ThermalPoint> points) async {
+  Future<void> shareCsv(GalleryEntry entry) async {
+    final bytes = await repository.readBytes(entry.id);
+    final document = const UirReader().read(bytes);
+    final points = thermalPointsFromMetadata(document.metadata);
     if (points.isEmpty) {
       throw const ThermalExportException('No measurement points to export.');
     }
-    final bytes = await repository.readBytes(entry.id);
-    final document = const UirReader().read(bytes);
     final csv = temperatureSeriesCsv(frames: document.frames, points: points);
     final file = await _writeTempFile(
       '${_safeName(entry.name)}.csv',
@@ -44,12 +45,12 @@ class ThermalExporter {
 
   Future<void> sharePng(
     GalleryEntry entry,
-    List<ThermalPoint> points,
     RenderSettings settings, {
     bool includePoints = true,
   }) async {
     final bytes = await repository.readBytes(entry.id);
     final document = const UirReader().read(bytes);
+    final points = thermalPointsFromMetadata(document.metadata);
     if (document.frames.isEmpty) {
       throw const ThermalExportException('No readable frames to export.');
     }

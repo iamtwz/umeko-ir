@@ -19,6 +19,9 @@ class IoUirRepository implements UirRepository {
   final Directory? _recordingsDirectory;
 
   @override
+  bool get isAvailable => true;
+
+  @override
   Future<List<GalleryEntry>> listEntries() async {
     final directory = await _ensureRecordingsDirectory();
     final manifests = <UirManifest>[];

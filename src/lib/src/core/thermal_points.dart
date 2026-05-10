@@ -20,6 +20,16 @@ class ThermalPoint {
   final String label;
   final int colorArgb;
 
+  factory ThermalPoint.fromJson(Map<String, Object?> json) {
+    return ThermalPoint(
+      id: json['id'] as String,
+      xNorm: (json['xNorm'] as num).toDouble(),
+      yNorm: (json['yNorm'] as num).toDouble(),
+      label: json['label'] as String,
+      colorArgb: json['colorArgb'] as int,
+    );
+  }
+
   Color get color => Color(colorArgb);
 
   ThermalPoint copyWith({
@@ -46,6 +56,22 @@ class ThermalPoint {
       'colorArgb': colorArgb,
     };
   }
+}
+
+List<ThermalPoint> thermalPointsFromMetadata(Map<String, Object?> metadata) {
+  final rawPoints = metadata['points'];
+  if (rawPoints is! List<Object?>) return const [];
+  final points = <ThermalPoint>[];
+  for (final rawPoint in rawPoints) {
+    if (rawPoint is! Map<String, Object?>) continue;
+    try {
+      points.add(ThermalPoint.fromJson(rawPoint));
+    } catch (_) {
+      // Ignore malformed point records so a bad metadata entry does not make
+      // an otherwise readable UIR file unusable.
+    }
+  }
+  return List.unmodifiable(points);
 }
 
 double sampleThermalPoint(

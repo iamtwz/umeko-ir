@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'gallery_entry.dart';
 
 abstract interface class UirRepository {
+  bool get isAvailable;
+
   Future<List<GalleryEntry>> listEntries();
 
   Future<GalleryEntry> saveBytes({

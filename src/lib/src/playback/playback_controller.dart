@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 
 import '../core/thermal_frame.dart';
+import '../core/thermal_points.dart';
 import '../core/uir_format.dart';
 
 class UirPlaybackController extends ChangeNotifier {
-  UirPlaybackController(this.document);
+  UirPlaybackController(this.document)
+    : _points = thermalPointsFromMetadata(document.metadata);
 
   final UirDocument document;
   Timer? _timer;
@@ -15,11 +17,13 @@ class UirPlaybackController extends ChangeNotifier {
   var _playing = false;
   var _speed = 1.0;
   var _loop = false;
+  List<ThermalPoint> _points;
 
   int get currentIndex => _index;
   bool get isPlaying => _playing;
   double get speed => _speed;
   bool get loop => _loop;
+  List<ThermalPoint> get points => List.unmodifiable(_points);
   int get frameCount => document.frames.length;
   bool get isVideo => document.header.isVideo || frameCount > 1;
   ThermalFrame? get currentFrame =>
@@ -37,6 +41,39 @@ class UirPlaybackController extends ChangeNotifier {
 
   void setLoop(bool value) {
     _loop = value;
+    notifyListeners();
+  }
+
+  void addPoint(double xNorm, double yNorm) {
+    final label = 'P${_points.length + 1}';
+    _points = [
+      ..._points,
+      ThermalPoint(
+        id: 'playback-point-${DateTime.now().microsecondsSinceEpoch}',
+        xNorm: xNorm.clamp(0.0, 1.0),
+        yNorm: yNorm.clamp(0.0, 1.0),
+        label: label,
+        colorArgb: _colorForIndex(_points.length),
+      ),
+    ];
+    notifyListeners();
+  }
+
+  void movePoint(String id, double xNorm, double yNorm) {
+    _points = [
+      for (final point in _points)
+        point.id == id
+            ? point.copyWith(
+                xNorm: xNorm.clamp(0.0, 1.0),
+                yNorm: yNorm.clamp(0.0, 1.0),
+              )
+            : point,
+    ];
+    notifyListeners();
+  }
+
+  void removePoint(String id) {
+    _points = _points.where((point) => point.id != id).toList();
     notifyListeners();
   }
 
@@ -117,5 +154,17 @@ class UirPlaybackController extends ChangeNotifier {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  int _colorForIndex(int index) {
+    const colors = [
+      0xffffd166,
+      0xff06d6a0,
+      0xffef476f,
+      0xff118ab2,
+      0xfff78c6b,
+      0xffc77dff,
+    ];
+    return colors[index % colors.length];
   }
 }
