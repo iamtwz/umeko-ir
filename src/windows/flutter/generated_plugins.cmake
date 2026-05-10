@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   flutter_libserialport
   sentry_flutter
+  share_plus
   url_launcher_windows
 )
 

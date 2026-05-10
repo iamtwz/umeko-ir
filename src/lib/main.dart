@@ -22,6 +22,7 @@ import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
 import 'src/core/thermal_points.dart';
 import 'src/core/thermal_rendering.dart';
+import 'src/export/thermal_export.dart';
 import 'src/l10n/app_localizations.dart';
 import 'src/playback/playback_controller.dart';
 import 'src/playback/uir_reader.dart';
@@ -980,15 +981,22 @@ class _GallerySectionHeader extends StatelessWidget {
   }
 }
 
-class LocalGalleryTile extends StatelessWidget {
+class LocalGalleryTile extends ConsumerWidget {
   const LocalGalleryTile({super.key, required this.entry});
 
   final GalleryEntry entry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final duration = entry.duration;
+    final renderSettings = ref.watch(
+      thermalControllerProvider.select((state) => state.renderSettings),
+    );
+    final points = ref.watch(thermalPointsProvider);
+    final exporter = ThermalExporter(
+      repository: ref.read(uirRepositoryProvider),
+    );
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1011,10 +1019,30 @@ class LocalGalleryTile extends StatelessWidget {
                     color: colorScheme.primary,
                   ),
                   const Spacer(),
-                  Chip(
-                    label: const Text('Local'),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
+                  PopupMenuButton<_LocalExportAction>(
+                    tooltip: 'Export',
+                    onSelected: (action) => _exportLocalEntry(
+                      context,
+                      action,
+                      exporter,
+                      renderSettings,
+                      points,
+                    ),
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: _LocalExportAction.uir,
+                        child: Text('Share UIR'),
+                      ),
+                      PopupMenuItem(
+                        value: _LocalExportAction.png,
+                        child: Text('Share PNG'),
+                      ),
+                      PopupMenuItem(
+                        value: _LocalExportAction.csv,
+                        child: Text('Share CSV'),
+                      ),
+                    ],
+                    child: const Icon(Icons.more_vert),
                   ),
                 ],
               ),
@@ -1046,7 +1074,33 @@ class LocalGalleryTile extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _exportLocalEntry(
+    BuildContext context,
+    _LocalExportAction action,
+    ThermalExporter exporter,
+    RenderSettings renderSettings,
+    List<ThermalPoint> points,
+  ) async {
+    try {
+      switch (action) {
+        case _LocalExportAction.uir:
+          await exporter.shareUir(entry);
+        case _LocalExportAction.png:
+          await exporter.sharePng(entry, points, renderSettings);
+        case _LocalExportAction.csv:
+          await exporter.shareCsv(entry, points);
+      }
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
 }
+
+enum _LocalExportAction { uir, png, csv }
 
 class LocalUirViewer extends ConsumerStatefulWidget {
   const LocalUirViewer({super.key, required this.entry});
