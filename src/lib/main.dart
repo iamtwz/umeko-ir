@@ -774,30 +774,30 @@ class RecordingControls extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: FilledButton.icon(
+                  child: _RecordingActionButton(
                     onPressed: canUseFrame
                         ? () => _captureSnapshot(context, controller)
                         : null,
                     icon: const Icon(Icons.camera_alt_outlined),
-                    label: Text(l10n.capture),
+                    label: l10n.capture,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: recorder.isRecording
-                      ? FilledButton.icon(
+                      ? _RecordingActionButton(
                           onPressed: busy
                               ? null
                               : () => _stopRecording(context, controller),
                           icon: const Icon(Icons.stop),
-                          label: Text(l10n.stopRecording),
+                          label: l10n.stopRecording,
                         )
-                      : FilledButton.icon(
+                      : _RecordingActionButton(
                           onPressed: canUseFrame
                               ? () => controller.startRecording()
                               : null,
                           icon: const Icon(Icons.fiber_manual_record),
-                          label: Text(l10n.record),
+                          label: l10n.record,
                         ),
                 ),
               ],
@@ -870,6 +870,41 @@ class RecordingControls extends ConsumerWidget {
       ),
     );
     Future<void>.delayed(const Duration(seconds: 2), controller.close);
+  }
+}
+
+class _RecordingActionButton extends StatelessWidget {
+  const _RecordingActionButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 40),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: onPressed,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconTheme.merge(data: const IconThemeData(size: 20), child: icon),
+            const SizedBox(width: 8),
+            Text(label, maxLines: 1),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1039,7 +1074,7 @@ class _DeviceGalleryTab extends StatelessWidget {
               : GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 300,
-                    mainAxisExtent: 244,
+                    mainAxisExtent: 218,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                   ),
@@ -1108,7 +1143,7 @@ class _LocalGalleryTab extends StatelessWidget {
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 300,
-              mainAxisExtent: 244,
+              mainAxisExtent: 218,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
             ),
@@ -1177,7 +1212,7 @@ class LocalGalleryTile extends ConsumerWidget {
               Dialog.fullscreen(child: LocalUirViewer(entry: entry)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1192,6 +1227,12 @@ class LocalGalleryTile extends ConsumerWidget {
                   const Spacer(),
                   PopupMenuButton<_GalleryMenuAction>(
                     tooltip: l10n.moreActions,
+                    iconSize: 22,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
                     onSelected: (action) {
                       switch (action) {
                         case _GalleryMenuAction.export:
@@ -1219,9 +1260,9 @@ class LocalGalleryTile extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               _GalleryThumbnailFrame(child: _LocalGalleryPreview(entry: entry)),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 entry.name,
                 maxLines: 1,
@@ -1631,7 +1672,7 @@ class _GalleryThumbnailFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 2.6,
+      aspectRatio: 3.0,
       child: ClipRRect(borderRadius: BorderRadius.circular(6), child: child),
     );
   }
@@ -2200,7 +2241,7 @@ class GalleryTile extends ConsumerWidget {
               Dialog.fullscreen(child: _DevicePhotoViewer(photo: photo)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2210,6 +2251,12 @@ class GalleryTile extends ConsumerWidget {
                   const Spacer(),
                   IconButton(
                     tooltip: l10n.delete,
+                    iconSize: 22,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
                     icon: const Icon(Icons.delete_outline),
                     onPressed: canDelete
                         ? () => controller.deletePhoto(photo.filename)
@@ -2217,6 +2264,12 @@ class GalleryTile extends ConsumerWidget {
                   ),
                   PopupMenuButton<_GalleryMenuAction>(
                     tooltip: l10n.moreActions,
+                    iconSize: 22,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
                     onSelected: (action) {
                       switch (action) {
                         case _GalleryMenuAction.export:
@@ -2244,7 +2297,7 @@ class GalleryTile extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               _GalleryThumbnailFrame(
                 child: ThermalRasterView(
                   temperatures: photo.temperatures,
@@ -2258,7 +2311,7 @@ class GalleryTile extends ConsumerWidget {
                   temperatureUnit: temperatureUnit,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 photo.filename,
                 maxLines: 1,

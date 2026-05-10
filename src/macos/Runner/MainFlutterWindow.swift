@@ -12,7 +12,6 @@ class MainFlutterWindow: NSWindow {
     let origin = NSPoint(
       x: visibleFrame.midX - defaultWidth / 2,
       y: visibleFrame.midY - defaultHeight / 2)
-    self.minSize = NSSize(width: 1040, height: 680)
     self.setFrame(
       NSRect(origin: origin, size: NSSize(width: defaultWidth, height: defaultHeight)),
       display: true)
