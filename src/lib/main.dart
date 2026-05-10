@@ -1880,31 +1880,32 @@ class _LocalUirPlaybackView extends ConsumerWidget {
               points: points,
               exporter: exporter,
               temperatureUnit: temperatureUnit,
+              expandChart: wide,
             );
-            final bottomPanel = wide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(width: 320, child: filterControls),
-                      const SizedBox(width: 12),
-                      Expanded(child: controls),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      filterControls,
-                      const SizedBox(height: 12),
-                      Expanded(child: controls),
-                    ],
-                  );
-            final bottomHeight = wide
-                ? points.isEmpty
-                      ? 300.0
-                      : 420.0
-                : math.min(
-                    points.isEmpty ? 340.0 : 480.0,
-                    constraints.maxHeight * 0.62,
-                  );
+            if (!wide) {
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  SizedBox(
+                    height: math.max(280, constraints.maxHeight * 0.52),
+                    child: viewer,
+                  ),
+                  const SizedBox(height: 12),
+                  controls,
+                  const SizedBox(height: 12),
+                  filterControls,
+                ],
+              );
+            }
+            final bottomPanel = Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: 320, child: filterControls),
+                const SizedBox(width: 12),
+                Expanded(child: controls),
+              ],
+            );
+            final bottomHeight = points.isEmpty ? 300.0 : 420.0;
             return Column(
               children: [
                 Expanded(child: viewer),
@@ -1925,6 +1926,7 @@ class _PlaybackControls extends StatelessWidget {
     required this.points,
     required this.exporter,
     required this.temperatureUnit,
+    this.expandChart = true,
   });
 
   final UirPlaybackController controller;
@@ -1932,6 +1934,7 @@ class _PlaybackControls extends StatelessWidget {
   final List<ThermalPoint> points;
   final ThermalExporter exporter;
   final TemperatureUnit temperatureUnit;
+  final bool expandChart;
 
   @override
   Widget build(BuildContext context) {
@@ -2019,45 +2022,33 @@ class _PlaybackControls extends StatelessWidget {
             ),
             if (points.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Expanded(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            l10n.temperatureCurves,
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const Spacer(),
-                          TextButton.icon(
-                            onPressed: () => _sharePlaybackCsv(context),
-                            icon: const Icon(Icons.table_chart_outlined),
-                            label: Text(l10n.exportCsv),
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: TemperatureCurveChart(
-                        series: series,
-                        points: points,
-                        cursor: controller.position,
-                        fixedDuration: controller.duration,
-                        temperatureUnit: temperatureUnit,
-                      ),
-                    ),
-                  ],
+              if (expandChart)
+                Expanded(
+                  child: _PlaybackTemperatureChartSection(
+                    chart: chart,
+                    onExport: () => _sharePlaybackCsv(context),
+                  ),
+                )
+              else
+                _PlaybackTemperatureChartSection(
+                  chart: chart,
+                  height: 190,
+                  onExport: () => _sharePlaybackCsv(context),
                 ),
-              ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget get chart {
+    return TemperatureCurveChart(
+      series: series,
+      points: points,
+      cursor: controller.position,
+      fixedDuration: controller.duration,
+      temperatureUnit: temperatureUnit,
     );
   }
 
@@ -2089,6 +2080,49 @@ class _PlaybackControls extends StatelessWidget {
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
+  }
+}
+
+class _PlaybackTemperatureChartSection extends StatelessWidget {
+  const _PlaybackTemperatureChartSection({
+    required this.chart,
+    required this.onExport,
+    this.height,
+  });
+
+  final Widget chart;
+  final VoidCallback onExport;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Text(
+                context.l10n.temperatureCurves,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: onExport,
+                icon: const Icon(Icons.table_chart_outlined),
+                label: Text(context.l10n.exportCsv),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: chart),
+      ],
+    );
+    if (height == null) return content;
+    return SizedBox(height: height, child: content);
   }
 }
 
