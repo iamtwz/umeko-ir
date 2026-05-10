@@ -31,17 +31,24 @@ void main() {
     final readBack = await repository.readBytes(saved.id);
     expect(readBack, bytes);
 
+    expect(
+      temp.listSync().map(
+        (entity) => entity.path.split(Platform.pathSeparator).last,
+      ),
+      allOf(contains('${saved.id}.uir'), isNot(contains('${saved.id}.json'))),
+    );
+
     await repository.delete(saved.id);
     expect(await repository.listEntries(), isEmpty);
   });
 
-  test('ignores malformed manifest files while listing', () async {
+  test('ignores malformed UIR files while listing', () async {
     final temp = await Directory.systemTemp.createTemp('umeko_uir_repo_test_');
     addTearDown(() async {
       if (await temp.exists()) await temp.delete(recursive: true);
     });
     await File(
-      '${temp.path}${Platform.pathSeparator}bad.json',
+      '${temp.path}${Platform.pathSeparator}bad.uir',
     ).writeAsString('{not json');
 
     final repository = IoUirRepository(recordingsDirectory: temp);
@@ -64,6 +71,7 @@ Uint8List _sampleRecording() {
     _frame(1, createdAt.add(const Duration(milliseconds: 100))),
     elapsed: const Duration(milliseconds: 100),
   );
+  writer.writeMetadata({'name': 'Lab run'});
   return writer.finish();
 }
 

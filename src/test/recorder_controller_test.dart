@@ -35,6 +35,7 @@ void main() {
     expect(repository.savedBytes, hasLength(1));
     final document = const UirReader().read(repository.savedBytes.single);
     expect(document.header.isVideo, isFalse);
+    expect(document.metadata['name'], 'Still');
     expect(document.metadata['points'], isA<List<Object?>>());
     expect(document.frames, hasLength(1));
     expect(document.frames.single.frame.temperatures.first, closeTo(20, 0.005));
@@ -63,6 +64,7 @@ void main() {
     expect(entry.frameCount, 2);
     final document = const UirReader().read(repository.savedBytes.single);
     expect(document.header.isVideo, isTrue);
+    expect(document.metadata['name'], 'Clip');
     expect(document.frames, hasLength(2));
     expect(document.frames.last.frame.temperatures.first, closeTo(21, 0.005));
   });

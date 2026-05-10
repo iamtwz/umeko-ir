@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/thermal_points_controller.dart';
 import '../application/thermal_controller.dart';
 import '../core/thermal_frame.dart';
+import '../core/thermal_points.dart';
 import '../storage/gallery_entry.dart';
 import '../storage/uir_repository.dart';
 import 'uir_writer.dart';
@@ -73,6 +74,8 @@ class RecorderController extends Notifier<RecorderState> {
   StreamSubscription<ThermalFrame>? _frameSubscription;
   Stopwatch? _stopwatch;
   Timer? _elapsedTimer;
+  List<ThermalPoint> _recordingPoints = const [];
+  String? _recordingNameOverride;
 
   @override
   RecorderState build() {
@@ -104,14 +107,12 @@ class RecorderController extends Notifier<RecorderState> {
         sensorType: frame.sensorType,
         createdAt: frame.timestamp,
       );
-      _writePointMetadata(writer);
+      final captureName = name ?? _snapshotName(frame);
       writer.writeFrame(frame, elapsed: Duration.zero);
+      _writeMetadata(writer, name: captureName, points: _currentPoints());
       final entry = await ref
           .read(uirRepositoryProvider)
-          .saveBytes(
-            bytes: writer.finish(),
-            name: name ?? _snapshotName(frame),
-          );
+          .saveBytes(bytes: writer.finish(), name: captureName);
       state = RecorderState(lastSavedEntry: entry);
       return entry;
     } catch (error) {
@@ -143,7 +144,8 @@ class RecorderController extends Notifier<RecorderState> {
       createdAt: frame.timestamp,
       isVideo: true,
     );
-    _writePointMetadata(_writer!);
+    _recordingNameOverride = name;
+    _recordingPoints = _currentPoints();
     _writeFrame(frame);
     _frameSubscription = ref
         .read(thermalControllerProvider.notifier)
@@ -173,9 +175,11 @@ class RecorderController extends Notifier<RecorderState> {
     final writer = _writer;
     _writer = null;
     try {
+      final recordingName = name ?? _recordingNameOverride ?? _recordingName();
+      _writeMetadata(writer!, name: recordingName, points: _recordingPoints);
       final entry = await ref
           .read(uirRepositoryProvider)
-          .saveBytes(bytes: writer!.finish(), name: name ?? _recordingName());
+          .saveBytes(bytes: writer.finish(), name: recordingName);
       state = RecorderState(lastSavedEntry: entry);
       return entry;
     } catch (error) {
@@ -186,6 +190,8 @@ class RecorderController extends Notifier<RecorderState> {
       return null;
     } finally {
       _stopwatch = null;
+      _recordingPoints = const [];
+      _recordingNameOverride = null;
     }
   }
 
@@ -196,6 +202,8 @@ class RecorderController extends Notifier<RecorderState> {
     _frameSubscription = null;
     _writer = null;
     _stopwatch = null;
+    _recordingPoints = const [];
+    _recordingNameOverride = null;
     state = const RecorderState();
   }
 
@@ -217,6 +225,8 @@ class RecorderController extends Notifier<RecorderState> {
   void _fail(Object error) {
     _elapsedTimer?.cancel();
     _stopwatch?.stop();
+    _recordingPoints = const [];
+    _recordingNameOverride = null;
     state = RecorderState(
       status: RecorderStatus.error,
       frameCount: state.frameCount,
@@ -225,11 +235,19 @@ class RecorderController extends Notifier<RecorderState> {
     );
   }
 
-  void _writePointMetadata(UirByteWriter writer) {
-    final points = ref.read(thermalPointsProvider);
-    if (points.isEmpty) return;
+  List<ThermalPoint> _currentPoints() {
+    return List.unmodifiable(ref.read(thermalPointsProvider));
+  }
+
+  void _writeMetadata(
+    UirByteWriter writer, {
+    required String name,
+    required List<ThermalPoint> points,
+  }) {
     writer.writeMetadata({
-      'points': [for (final point in points) point.toJson()],
+      'name': name,
+      if (points.isNotEmpty)
+        'points': [for (final point in points) point.toJson()],
     });
   }
 

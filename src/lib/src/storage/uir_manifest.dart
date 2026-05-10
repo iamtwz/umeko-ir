@@ -44,27 +44,6 @@ class UirManifest {
     );
   }
 
-  factory UirManifest.fromJson(Map<String, Object?> json) {
-    return UirManifest(
-      id: json['id'] as String,
-      filename: json['filename'] as String,
-      name: json['name'] as String,
-      kind: GalleryKind.values.byName(json['kind'] as String),
-      createdAt: DateTime.fromMicrosecondsSinceEpoch(
-        json['createdAtMicros'] as int,
-        isUtc: true,
-      ).toLocal(),
-      sizeBytes: json['sizeBytes'] as int,
-      width: json['width'] as int,
-      height: json['height'] as int,
-      sensorType: ThermalSensorType.values.byName(json['sensorType'] as String),
-      frameCount: json['frameCount'] as int,
-      duration: json['durationMicros'] == null
-          ? null
-          : Duration(microseconds: json['durationMicros'] as int),
-    );
-  }
-
   final String id;
   final String filename;
   final String name;
@@ -91,21 +70,5 @@ class UirManifest {
       duration: duration,
       frameCount: frameCount,
     );
-  }
-
-  Map<String, Object?> toJson() {
-    return {
-      'id': id,
-      'filename': filename,
-      'name': name,
-      'kind': kind.name,
-      'createdAtMicros': createdAt.toUtc().microsecondsSinceEpoch,
-      'sizeBytes': sizeBytes,
-      'width': width,
-      'height': height,
-      'sensorType': sensorType.name,
-      'frameCount': frameCount,
-      'durationMicros': duration?.inMicroseconds,
-    };
   }
 }

@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../core/uir_format.dart';
 import '../playback/uir_reader.dart';
 import 'gallery_entry.dart';
 import 'uir_manifest.dart';
@@ -26,8 +26,8 @@ class IoUirRepository implements UirRepository {
     final directory = await _ensureRecordingsDirectory();
     final manifests = <UirManifest>[];
     await for (final entity in directory.list()) {
-      if (entity is! File || !entity.path.endsWith('.json')) continue;
-      final manifest = await _readManifest(entity);
+      if (entity is! File || !entity.path.endsWith('.uir')) continue;
+      final manifest = await _readUirEntry(entity);
       if (manifest != null) manifests.add(manifest);
     }
     manifests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -57,28 +57,23 @@ class IoUirRepository implements UirRepository {
       sizeBytes: bytes.length,
       document: document,
     );
-    await _writeManifest(directory, manifest);
     return manifest.toGalleryEntry();
   }
 
   @override
   Future<Uint8List> readBytes(String id) async {
     final directory = await _ensureRecordingsDirectory();
-    final manifest = await _readManifestById(directory, id);
-    if (manifest == null) {
+    final file = File(_join(directory.path, '$id.uir'));
+    if (!await file.exists()) {
       throw UirRepositoryException('UIR recording not found: $id');
     }
-    return File(_join(directory.path, manifest.filename)).readAsBytes();
+    return file.readAsBytes();
   }
 
   @override
   Future<void> delete(String id) async {
     final directory = await _ensureRecordingsDirectory();
-    final manifest = await _readManifestById(directory, id);
-    if (manifest == null) return;
-    await _deleteIfExists(File(_join(directory.path, manifest.filename)));
-    await _deleteIfExists(File(_join(directory.path, '$id.json')));
-    await _deleteIfExists(File(_join(directory.path, '$id.idx')));
+    await _deleteIfExists(File(_join(directory.path, '$id.uir')));
   }
 
   Future<Directory> _ensureRecordingsDirectory() async {
@@ -95,27 +90,22 @@ class IoUirRepository implements UirRepository {
     return Directory(_join(documents.path, 'Umeko IR', 'recordings'));
   }
 
-  Future<void> _writeManifest(Directory directory, UirManifest manifest) async {
-    final manifestFile = File(_join(directory.path, '${manifest.id}.json'));
-    final tempFile = File('${manifestFile.path}.tmp');
-    const encoder = JsonEncoder.withIndent('  ');
-    await tempFile.writeAsString(
-      encoder.convert(manifest.toJson()),
-      flush: true,
-    );
-    await tempFile.rename(manifestFile.path);
-  }
-
-  Future<UirManifest?> _readManifestById(Directory directory, String id) {
-    return _readManifest(File(_join(directory.path, '$id.json')));
-  }
-
-  Future<UirManifest?> _readManifest(File file) async {
+  Future<UirManifest?> _readUirEntry(File file) async {
     try {
       if (!await file.exists()) return null;
-      final json = jsonDecode(await file.readAsString());
-      if (json is! Map<String, Object?>) return null;
-      return UirManifest.fromJson(json);
+      final bytes = await file.readAsBytes();
+      final filename = _basename(file.path);
+      final id = filename.endsWith('.uir')
+          ? filename.substring(0, filename.length - 4)
+          : filename;
+      final document = const UirReader().read(bytes);
+      return UirManifest.fromDocument(
+        id: id,
+        filename: filename,
+        name: _nameFromDocument(document, id),
+        sizeBytes: bytes.length,
+        document: document,
+      );
     } catch (_) {
       return null;
     }
@@ -139,6 +129,16 @@ class IoUirRepository implements UirRepository {
   String _cleanName(String name) {
     final trimmed = name.trim();
     return trimmed.isEmpty ? 'Untitled recording' : trimmed;
+  }
+
+  String _nameFromDocument(UirDocument document, String fallback) {
+    final name = document.metadata['name'];
+    if (name is String && name.trim().isNotEmpty) return _cleanName(name);
+    return fallback;
+  }
+
+  String _basename(String path) {
+    return path.split(Platform.pathSeparator).last;
   }
 
   String _join(String part1, String part2, [String? part3]) {
