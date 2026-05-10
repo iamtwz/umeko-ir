@@ -94,8 +94,8 @@ class IoUirRepository implements UirRepository {
   }
 
   Future<Directory> _defaultRecordingsDirectory() async {
-    final documents = await getApplicationDocumentsDirectory();
-    return Directory(p.join(documents.path, 'Umeko IR', 'recordings'));
+    final support = await getApplicationSupportDirectory();
+    return Directory(p.join(support.path, 'recordings'));
   }
 
   Future<UirManifest?> _readUirEntry(File file) async {
