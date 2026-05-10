@@ -712,17 +712,119 @@ abstract class AppLocalizations {
   /// **'Save CSV'**
   String get shareCsv;
 
+  /// No description provided for @exportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get exportCsv;
+
+  /// No description provided for @moreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get moreActions;
+
+  /// No description provided for @fileInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'File information'**
+  String get fileInformation;
+
+  /// No description provided for @fileName.
+  ///
+  /// In en, this message translates to:
+  /// **'File name'**
+  String get fileName;
+
+  /// No description provided for @fileFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get fileFormat;
+
+  /// No description provided for @source.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get source;
+
+  /// No description provided for @type.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get type;
+
+  /// No description provided for @resolution.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolution'**
+  String get resolution;
+
+  /// No description provided for @frames.
+  ///
+  /// In en, this message translates to:
+  /// **'Frames'**
+  String get frames;
+
+  /// No description provided for @durationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get durationLabel;
+
+  /// No description provided for @temperatureRangeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature range'**
+  String get temperatureRangeLabel;
+
+  /// No description provided for @averageTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Average temperature'**
+  String get averageTemperature;
+
+  /// No description provided for @fileSize.
+  ///
+  /// In en, this message translates to:
+  /// **'File size'**
+  String get fileSize;
+
+  /// No description provided for @createdAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created at'**
+  String get createdAt;
+
   /// No description provided for @photoKind.
   ///
   /// In en, this message translates to:
   /// **'Photo'**
   String get photoKind;
 
+  /// No description provided for @videoKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get videoKind;
+
   /// No description provided for @exportOptions.
   ///
   /// In en, this message translates to:
   /// **'Export options'**
   String get exportOptions;
+
+  /// No description provided for @exportingApng.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting APNG'**
+  String get exportingApng;
+
+  /// No description provided for @temperatureCurves.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature curves'**
+  String get temperatureCurves;
 
   /// No description provided for @includeLegend.
   ///

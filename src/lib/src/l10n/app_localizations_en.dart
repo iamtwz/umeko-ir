@@ -333,10 +333,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCsv => 'Save CSV';
 
   @override
+  String get exportCsv => 'Export CSV';
+
+  @override
+  String get moreActions => 'More actions';
+
+  @override
+  String get fileInformation => 'File information';
+
+  @override
+  String get fileName => 'File name';
+
+  @override
+  String get fileFormat => 'Format';
+
+  @override
+  String get source => 'Source';
+
+  @override
+  String get type => 'Type';
+
+  @override
+  String get resolution => 'Resolution';
+
+  @override
+  String get frames => 'Frames';
+
+  @override
+  String get durationLabel => 'Duration';
+
+  @override
+  String get temperatureRangeLabel => 'Temperature range';
+
+  @override
+  String get averageTemperature => 'Average temperature';
+
+  @override
+  String get fileSize => 'File size';
+
+  @override
+  String get createdAt => 'Created at';
+
+  @override
   String get photoKind => 'Photo';
 
   @override
+  String get videoKind => 'Video';
+
+  @override
   String get exportOptions => 'Export options';
+
+  @override
+  String get exportingApng => 'Exporting APNG';
+
+  @override
+  String get temperatureCurves => 'Temperature curves';
 
   @override
   String get includeLegend => 'Show legend';

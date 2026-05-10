@@ -1,5 +1,7 @@
-import '../core/thermal_rendering.dart';
 import '../core/temperature_unit.dart';
+import '../core/thermal_frame.dart';
+import '../core/thermal_points.dart';
+import '../core/thermal_rendering.dart';
 import '../storage/gallery_entry.dart';
 import '../storage/uir_repository_base.dart';
 
@@ -41,12 +43,27 @@ class ThermalExporter {
     );
   }
 
+  Future<void> shareFramePng({
+    required String name,
+    required ThermalFrame frame,
+    required RenderSettings settings,
+    required List<ThermalPoint> points,
+    TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
+    bool includePoints = true,
+    bool includeLegend = true,
+  }) async {
+    throw const ThermalExportException(
+      'Export sharing is not implemented on this platform yet.',
+    );
+  }
+
   Future<void> shareApng(
     GalleryEntry entry,
     RenderSettings settings, {
     TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
+    void Function(int completed, int total)? onProgress,
   }) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',

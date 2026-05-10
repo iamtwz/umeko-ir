@@ -113,12 +113,43 @@ class ThermalExporter {
     );
   }
 
+  Future<void> shareFramePng({
+    required String name,
+    required ThermalFrame frame,
+    required RenderSettings settings,
+    required List<ThermalPoint> points,
+    TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
+    bool includePoints = true,
+    bool includeLegend = true,
+  }) async {
+    final png = await _renderFramePng(
+      frame,
+      settings,
+      points: points,
+      includePoints: includePoints,
+      includeLegend: includeLegend,
+      temperatureUnit: temperatureUnit,
+      exportScale: _pngExportScale,
+    );
+    await _saveFile(
+      suggestedName: '${_safeName(name)}.png',
+      bytes: png,
+      typeGroup: const XTypeGroup(
+        label: 'PNG',
+        extensions: ['png'],
+        mimeTypes: ['image/png'],
+        uniformTypeIdentifiers: ['public.png'],
+      ),
+    );
+  }
+
   Future<void> shareApng(
     GalleryEntry entry,
     RenderSettings settings, {
     TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
+    void Function(int completed, int total)? onProgress,
   }) async {
     final bytes = await repository.readBytes(entry.id);
     final document = const UirReader().read(bytes);
@@ -127,6 +158,7 @@ class ThermalExporter {
       throw const ThermalExportException('No video frames to export.');
     }
     img.Image? animation;
+    onProgress?.call(0, document.frames.length);
     for (var i = 0; i < document.frames.length; i++) {
       final record = document.frames[i];
       final png = await _renderFramePng(
@@ -150,6 +182,7 @@ class ThermalExporter {
       } else {
         animation.addFrame(frameImage);
       }
+      onProgress?.call(i + 1, document.frames.length);
     }
     final apng = img.PngEncoder().encode(animation!);
     await _saveFile(

@@ -150,6 +150,30 @@ String _temperatureRange(double min, double max, TemperatureUnit unit) {
   return unit.formatRange(min, max);
 }
 
+String _formatFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kib = bytes / 1024;
+  if (kib < 1024) return '${kib.toStringAsFixed(1)} KB';
+  return '${(kib / 1024).toStringAsFixed(1)} MB';
+}
+
+String _formatDateTime(DateTime value) {
+  return value
+      .toLocal()
+      .toIso8601String()
+      .replaceFirst('T', ' ')
+      .split('.')
+      .first;
+}
+
+String _devicePhotoFormatLabel(DevicePhotoFormat format) {
+  return switch (format) {
+    DevicePhotoFormat.uint16_32x32 => 'UInt16 32x32',
+    DevicePhotoFormat.float32_32x24 => 'Float32 32x24',
+    DevicePhotoFormat.float32_16x12 => 'Float32 16x12',
+  };
+}
+
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -1166,28 +1190,29 @@ class LocalGalleryTile extends ConsumerWidget {
                     color: colorScheme.primary,
                   ),
                   const Spacer(),
-                  PopupMenuButton<_LocalExportAction>(
-                    tooltip: l10n.export,
-                    onSelected: (action) => _exportLocalEntry(
-                      context,
-                      action,
-                      exporter,
-                      renderSettings,
-                      temperatureUnit,
-                    ),
+                  PopupMenuButton<_GalleryMenuAction>(
+                    tooltip: l10n.moreActions,
+                    onSelected: (action) {
+                      switch (action) {
+                        case _GalleryMenuAction.export:
+                          _exportLocalEntry(
+                            context,
+                            exporter,
+                            renderSettings,
+                            temperatureUnit,
+                          );
+                        case _GalleryMenuAction.fileInfo:
+                          _showLocalFileInfo(context, entry, temperatureUnit);
+                      }
+                    },
                     itemBuilder: (context) => [
                       PopupMenuItem(
-                        value: _LocalExportAction.png,
-                        child: Text(l10n.sharePng),
+                        value: _GalleryMenuAction.export,
+                        child: Text(l10n.export),
                       ),
-                      if (entry.kind == GalleryKind.video)
-                        PopupMenuItem(
-                          value: _LocalExportAction.apng,
-                          child: Text(l10n.shareApng),
-                        ),
                       PopupMenuItem(
-                        value: _LocalExportAction.uir,
-                        child: Text(l10n.shareUir),
+                        value: _GalleryMenuAction.fileInfo,
+                        child: Text(l10n.fileInformation),
                       ),
                     ],
                     child: const Icon(Icons.more_vert),
@@ -1222,18 +1247,23 @@ class LocalGalleryTile extends ConsumerWidget {
 
   Future<void> _exportLocalEntry(
     BuildContext context,
-    _LocalExportAction action,
     ThermalExporter exporter,
     RenderSettings renderSettings,
     TemperatureUnit temperatureUnit,
   ) async {
+    final request = await _showLocalExportDialog(
+      context,
+      renderSettings,
+      supportsApng: entry.kind == GalleryKind.video,
+    );
+    if (request == null) return;
+    if (!context.mounted) return;
     try {
-      switch (action) {
-        case _LocalExportAction.uir:
+      switch (request.format) {
+        case _LocalExportFormat.uir:
           await exporter.shareUir(entry);
-        case _LocalExportAction.png:
-          if (!context.mounted) return;
-          final options = await _showPngExportOptions(context, renderSettings);
+        case _LocalExportFormat.png:
+          final options = request.options;
           if (options == null) return;
           await exporter.sharePng(
             entry,
@@ -1242,16 +1272,15 @@ class LocalGalleryTile extends ConsumerWidget {
             includePoints: options.includePoints,
             includeLegend: options.includeLegend,
           );
-        case _LocalExportAction.apng:
-          if (!context.mounted) return;
-          final options = await _showPngExportOptions(context, renderSettings);
+        case _LocalExportFormat.apng:
+          final options = request.options;
           if (options == null) return;
-          await exporter.shareApng(
+          await _shareApngWithProgress(
+            context,
+            exporter,
             entry,
-            options.settings,
-            temperatureUnit: temperatureUnit,
-            includePoints: options.includePoints,
-            includeLegend: options.includeLegend,
+            options,
+            temperatureUnit,
           );
       }
     } catch (error) {
@@ -1263,7 +1292,16 @@ class LocalGalleryTile extends ConsumerWidget {
   }
 }
 
-enum _LocalExportAction { png, apng, uir }
+enum _GalleryMenuAction { export, fileInfo }
+
+enum _LocalExportFormat { png, apng, uir }
+
+class _LocalExportRequest {
+  const _LocalExportRequest({required this.format, this.options});
+
+  final _LocalExportFormat format;
+  final _LocalExportOptions? options;
+}
 
 class _LocalExportOptions {
   const _LocalExportOptions({
@@ -1275,6 +1313,121 @@ class _LocalExportOptions {
   final bool includeLegend;
   final bool includePoints;
   final RenderSettings settings;
+}
+
+Future<_LocalExportRequest?> _showLocalExportDialog(
+  BuildContext context,
+  RenderSettings initialSettings, {
+  required bool supportsApng,
+}) {
+  var format = _LocalExportFormat.png;
+  var includeLegend = true;
+  var includePoints = true;
+  var settings = initialSettings;
+  final l10n = context.l10n;
+  final formats = [
+    _LocalExportFormat.png,
+    if (supportsApng) _LocalExportFormat.apng,
+    _LocalExportFormat.uir,
+  ];
+  return showDialog<_LocalExportRequest>(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          final needsRenderOptions = format != _LocalExportFormat.uir;
+          return AlertDialog(
+            title: Text(l10n.export),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<_LocalExportFormat>(
+                      initialValue: format,
+                      decoration: InputDecoration(labelText: l10n.fileFormat),
+                      items: [
+                        for (final value in formats)
+                          DropdownMenuItem(
+                            value: value,
+                            child: Text(_localExportFormatLabel(l10n, value)),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => format = value);
+                      },
+                    ),
+                    if (needsRenderOptions) ...[
+                      const SizedBox(height: 12),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: includeLegend,
+                        title: Text(l10n.includeLegend),
+                        onChanged: (value) {
+                          setState(
+                            () => includeLegend = value ?? includeLegend,
+                          );
+                        },
+                      ),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: includePoints,
+                        title: Text(l10n.includeMeasurementPoints),
+                        onChanged: (value) {
+                          setState(
+                            () => includePoints = value ?? includePoints,
+                          );
+                        },
+                      ),
+                      const Divider(height: 24),
+                      _ExportRenderSettingsFields(
+                        settings: settings,
+                        onChanged: (value) => setState(() => settings = value),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(
+                  _LocalExportRequest(
+                    format: format,
+                    options: needsRenderOptions
+                        ? _LocalExportOptions(
+                            includeLegend: includeLegend,
+                            includePoints: includePoints,
+                            settings: settings,
+                          )
+                        : null,
+                  ),
+                ),
+                child: Text(l10n.export),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+String _localExportFormatLabel(
+  AppLocalizations l10n,
+  _LocalExportFormat format,
+) {
+  return switch (format) {
+    _LocalExportFormat.png => l10n.sharePng,
+    _LocalExportFormat.apng => l10n.shareApng,
+    _LocalExportFormat.uir => l10n.shareUir,
+  };
 }
 
 Future<_LocalExportOptions?> _showPngExportOptions(
@@ -1315,56 +1468,8 @@ Future<_LocalExportOptions?> _showPngExportOptions(
                       },
                     ),
                     const Divider(height: 24),
-                    DropdownButtonFormField<ThermalColorMap>(
-                      initialValue: settings.colorMap,
-                      decoration: InputDecoration(labelText: l10n.colorMap),
-                      items: [
-                        for (final value in ThermalColorMap.values)
-                          DropdownMenuItem(
-                            value: value,
-                            child: Text(value.label(l10n)),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          settings = settings.copyWith(colorMap: value);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<ThermalFilter>(
-                      initialValue: settings.filter,
-                      decoration: InputDecoration(labelText: l10n.filter),
-                      items: [
-                        for (final value in ThermalFilter.values)
-                          DropdownMenuItem(
-                            value: value,
-                            child: Text(value.label(l10n)),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          settings = settings.copyWith(filter: value);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _CompactSwitchRow(
-                      value: settings.upscaleEnabled,
-                      label: l10n.bilinear,
-                      onChanged: (value) {
-                        setState(() {
-                          settings = settings.copyWith(upscaleEnabled: value);
-                        });
-                      },
-                    ),
-                    _ExportAdvancedRenderSettings(
+                    _ExportRenderSettingsFields(
                       settings: settings,
-                      label: l10n.advancedRenderSettings,
-                      horizontalFlipLabel: l10n.horizontalFlip,
-                      verticalFlipLabel: l10n.verticalFlip,
                       onChanged: (value) => setState(() => settings = value),
                     ),
                   ],
@@ -1392,6 +1497,120 @@ Future<_LocalExportOptions?> _showPngExportOptions(
       );
     },
   );
+}
+
+class _ExportRenderSettingsFields extends StatelessWidget {
+  const _ExportRenderSettingsFields({
+    required this.settings,
+    required this.onChanged,
+  });
+
+  final RenderSettings settings;
+  final ValueChanged<RenderSettings> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DropdownButtonFormField<ThermalColorMap>(
+          initialValue: settings.colorMap,
+          decoration: InputDecoration(labelText: l10n.colorMap),
+          items: [
+            for (final value in ThermalColorMap.values)
+              DropdownMenuItem(value: value, child: Text(value.label(l10n))),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            onChanged(settings.copyWith(colorMap: value));
+          },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<ThermalFilter>(
+          initialValue: settings.filter,
+          decoration: InputDecoration(labelText: l10n.filter),
+          items: [
+            for (final value in ThermalFilter.values)
+              DropdownMenuItem(value: value, child: Text(value.label(l10n))),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            onChanged(settings.copyWith(filter: value));
+          },
+        ),
+        const SizedBox(height: 10),
+        _CompactSwitchRow(
+          value: settings.upscaleEnabled,
+          label: l10n.bilinear,
+          onChanged: (value) =>
+              onChanged(settings.copyWith(upscaleEnabled: value)),
+        ),
+        _ExportAdvancedRenderSettings(
+          settings: settings,
+          label: l10n.advancedRenderSettings,
+          horizontalFlipLabel: l10n.horizontalFlip,
+          verticalFlipLabel: l10n.verticalFlip,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _shareApngWithProgress(
+  BuildContext context,
+  ThermalExporter exporter,
+  GalleryEntry entry,
+  _LocalExportOptions options,
+  TemperatureUnit temperatureUnit,
+) async {
+  var progress = 0.0;
+  StateSetter? updateDialog;
+  final rootNavigator = Navigator.of(context, rootNavigator: true);
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            updateDialog = setState;
+            return AlertDialog(
+              title: Text(context.l10n.exportingApng),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LinearProgressIndicator(value: progress),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${(progress * 100).clamp(0, 100).round()}%',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ),
+  );
+  try {
+    await exporter.shareApng(
+      entry,
+      options.settings,
+      temperatureUnit: temperatureUnit,
+      includePoints: options.includePoints,
+      includeLegend: options.includeLegend,
+      onProgress: (completed, total) {
+        if (total <= 0) return;
+        updateDialog?.call(() => progress = completed / total);
+      },
+    );
+  } finally {
+    if (rootNavigator.canPop()) rootNavigator.pop();
+  }
 }
 
 class _LocalGalleryPreview extends ConsumerStatefulWidget {
@@ -1715,6 +1934,23 @@ class _PlaybackControls extends StatelessWidget {
                     onPressed: frameCount > 1 ? controller.stepForward : null,
                     icon: const Icon(Icons.skip_next),
                   ),
+                  const SizedBox(width: 8),
+                  PopupMenuButton<double>(
+                    tooltip: l10n.playbackSpeed,
+                    onSelected: controller.setSpeed,
+                    itemBuilder: (context) => [
+                      for (final speed in _playbackSpeedOptions)
+                        PopupMenuItem(
+                          value: speed,
+                          child: Text(_formatSpeed(speed)),
+                        ),
+                    ],
+                    child: Chip(
+                      label: Text(_formatSpeed(controller.speed)),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
                   const Spacer(),
                   Text(
                     '${controller.currentIndex + 1}/$frameCount',
@@ -1740,53 +1976,26 @@ class _PlaybackControls extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: Text(l10n.playbackSpeed)),
-                Text(
-                  '${controller.speed.toStringAsFixed(1)}x',
-                  style: TextStyle(color: colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: SliderTheme(
-                data: sliderTheme.copyWith(
-                  thumbShape: SliderComponentShape.noThumb,
-                ),
-                child: Slider(
-                  value: controller.speed,
-                  min: 0.5,
-                  max: 3,
-                  divisions: 25,
-                  label: '${controller.speed.toStringAsFixed(1)}x',
-                  onChanged: (value) {
-                    controller.setSpeed((value * 10).round() / 10);
-                  },
-                ),
-              ),
-            ),
             if (points.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Expanded(
                 child: Column(
                   children: [
-                    SizedBox(
-                      height: 36,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         children: [
+                          Text(
+                            l10n.temperatureCurves,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
                           const Spacer(),
-                          OutlinedButton.icon(
+                          TextButton.icon(
                             onPressed: () => _sharePlaybackCsv(context),
                             icon: const Icon(Icons.table_chart_outlined),
-                            label: Text(l10n.shareCsv),
-                            style: OutlinedButton.styleFrom(
+                            label: Text(l10n.exportCsv),
+                            style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
                             ),
                           ),
                         ],
@@ -1797,6 +2006,7 @@ class _PlaybackControls extends StatelessWidget {
                         series: series,
                         points: points,
                         cursor: controller.position,
+                        fixedDuration: controller.duration,
                         temperatureUnit: temperatureUnit,
                       ),
                     ),
@@ -1808,6 +2018,14 @@ class _PlaybackControls extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static const _playbackSpeedOptions = <double>[0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+
+  static String _formatSpeed(double value) {
+    return value == value.roundToDouble()
+        ? '${value.toInt()}x'
+        : '${value.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '')}x';
   }
 
   Future<void> _sharePlaybackCsv(BuildContext context) async {
@@ -1833,6 +2051,122 @@ class _PlaybackControls extends StatelessWidget {
   }
 }
 
+void _showLocalFileInfo(
+  BuildContext context,
+  GalleryEntry entry,
+  TemperatureUnit temperatureUnit,
+) {
+  final l10n = context.l10n;
+  _showFileInfoDialog(
+    context,
+    title: l10n.fileInformation,
+    rows: [
+      _InfoRowData(l10n.fileName, entry.name),
+      _InfoRowData(l10n.source, l10n.localRecordings),
+      _InfoRowData(
+        l10n.type,
+        entry.kind == GalleryKind.photo ? l10n.photoKind : l10n.videoKind,
+      ),
+      _InfoRowData(l10n.resolution, '${entry.width}x${entry.height}'),
+      if (entry.frameCount != null)
+        _InfoRowData(l10n.frames, entry.frameCount.toString()),
+      if (entry.duration != null)
+        _InfoRowData(l10n.durationLabel, _formatDuration(entry.duration!)),
+      _InfoRowData(
+        l10n.temperatureRangeLabel,
+        _temperatureRange(entry.tMin, entry.tMax, temperatureUnit),
+      ),
+      _InfoRowData(l10n.averageTemperature, temperatureUnit.format(entry.tAvg)),
+      _InfoRowData(l10n.fileSize, _formatFileSize(entry.sizeBytes)),
+      _InfoRowData(l10n.createdAt, _formatDateTime(entry.createdAt)),
+    ],
+  );
+}
+
+void _showDeviceFileInfo(
+  BuildContext context,
+  DevicePhoto photo,
+  TemperatureUnit temperatureUnit,
+) {
+  final l10n = context.l10n;
+  _showFileInfoDialog(
+    context,
+    title: l10n.fileInformation,
+    rows: [
+      _InfoRowData(l10n.fileName, photo.filename),
+      _InfoRowData(l10n.source, l10n.deviceFilesSection),
+      _InfoRowData(l10n.type, l10n.photoKind),
+      _InfoRowData(l10n.fileFormat, _devicePhotoFormatLabel(photo.format)),
+      _InfoRowData(l10n.resolution, '${photo.width}x${photo.height}'),
+      _InfoRowData(
+        l10n.temperatureRangeLabel,
+        _temperatureRange(photo.tMin, photo.tMax, temperatureUnit),
+      ),
+      _InfoRowData(l10n.averageTemperature, temperatureUnit.format(photo.tAvg)),
+      _InfoRowData(l10n.fileSize, _formatFileSize(photo.size)),
+    ],
+  );
+}
+
+void _showFileInfoDialog(
+  BuildContext context, {
+  required String title,
+  required List<_InfoRowData> rows,
+}) {
+  showDialog<void>(
+    context: context,
+    builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+      return AlertDialog(
+        title: Text(title),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final row in rows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 130,
+                        child: Text(
+                          row.label,
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      Expanded(
+                        child: SelectableText(
+                          row.value,
+                          textAlign: TextAlign.end,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l10n.close),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _InfoRowData {
+  const _InfoRowData(this.label, this.value);
+
+  final String label;
+  final String value;
+}
+
 class GalleryTile extends ConsumerWidget {
   const GalleryTile({super.key, required this.photo});
 
@@ -1852,18 +2186,17 @@ class GalleryTile extends ConsumerWidget {
       ),
     );
     final controller = ref.read(thermalControllerProvider.notifier);
+    final exporter = ThermalExporter(
+      repository: ref.read(uirRepositoryProvider),
+    );
     final l10n = context.l10n;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => showDialog<void>(
           context: context,
-          builder: (_) => Dialog.fullscreen(
-            child: Scaffold(
-              appBar: AppBar(title: Text(photo.filename)),
-              body: _DevicePhotoViewer(photo: photo),
-            ),
-          ),
+          builder: (_) =>
+              Dialog.fullscreen(child: _DevicePhotoViewer(photo: photo)),
         ),
         child: Column(
           children: [
@@ -1887,12 +2220,44 @@ class GalleryTile extends ConsumerWidget {
               dense: true,
               title: Text(photo.filename, overflow: TextOverflow.ellipsis),
               subtitle: Text(_devicePhotoInfo(context, photo, temperatureUnit)),
-              trailing: IconButton(
-                tooltip: l10n.delete,
-                icon: const Icon(Icons.delete_outline),
-                onPressed: canDelete
-                    ? () => controller.deletePhoto(photo.filename)
-                    : null,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: l10n.delete,
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: canDelete
+                        ? () => controller.deletePhoto(photo.filename)
+                        : null,
+                  ),
+                  PopupMenuButton<_GalleryMenuAction>(
+                    tooltip: l10n.moreActions,
+                    onSelected: (action) {
+                      switch (action) {
+                        case _GalleryMenuAction.export:
+                          _exportDevicePhoto(
+                            context,
+                            exporter,
+                            renderSettings,
+                            temperatureUnit,
+                            const [],
+                          );
+                        case _GalleryMenuAction.fileInfo:
+                          _showDeviceFileInfo(context, photo, temperatureUnit);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: _GalleryMenuAction.export,
+                        child: Text(l10n.export),
+                      ),
+                      PopupMenuItem(
+                        value: _GalleryMenuAction.fileInfo,
+                        child: Text(l10n.fileInformation),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -1900,29 +2265,108 @@ class GalleryTile extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _exportDevicePhoto(
+    BuildContext context,
+    ThermalExporter exporter,
+    RenderSettings renderSettings,
+    TemperatureUnit temperatureUnit,
+    List<ThermalPoint> points,
+  ) async {
+    final options = await _showPngExportOptions(context, renderSettings);
+    if (options == null) return;
+    try {
+      await exporter.shareFramePng(
+        name: photo.filename,
+        frame: _frameFromDevicePhoto(photo),
+        settings: options.settings,
+        points: points,
+        temperatureUnit: temperatureUnit,
+        includePoints: options.includePoints,
+        includeLegend: options.includeLegend,
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
 }
 
-class _DevicePhotoViewer extends StatefulWidget {
+class _DevicePhotoViewer extends ConsumerStatefulWidget {
   const _DevicePhotoViewer({required this.photo});
 
   final DevicePhoto photo;
 
   @override
-  State<_DevicePhotoViewer> createState() => _DevicePhotoViewerState();
+  ConsumerState<_DevicePhotoViewer> createState() => _DevicePhotoViewerState();
 }
 
-class _DevicePhotoViewerState extends State<_DevicePhotoViewer> {
+class _DevicePhotoViewerState extends ConsumerState<_DevicePhotoViewer> {
   var _points = const <ThermalPoint>[];
 
   @override
   Widget build(BuildContext context) {
-    return _ThermalFrameReviewView(
-      frame: _frameFromDevicePhoto(widget.photo),
-      points: _points,
-      onPointAdded: _addPoint,
-      onPointMoved: _movePoint,
-      onPointRemoved: _removePoint,
+    final renderSettings = ref.watch(
+      thermalControllerProvider.select((state) => state.renderSettings),
     );
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
+    final exporter = ThermalExporter(
+      repository: ref.read(uirRepositoryProvider),
+    );
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.photo.filename),
+        actions: [
+          IconButton(
+            tooltip: context.l10n.export,
+            onPressed: () => _exportCurrentPhoto(
+              context,
+              exporter,
+              renderSettings,
+              temperatureUnit,
+            ),
+            icon: const Icon(Icons.ios_share_outlined),
+          ),
+        ],
+      ),
+      body: _ThermalFrameReviewView(
+        frame: _frameFromDevicePhoto(widget.photo),
+        points: _points,
+        onPointAdded: _addPoint,
+        onPointMoved: _movePoint,
+        onPointRemoved: _removePoint,
+      ),
+    );
+  }
+
+  Future<void> _exportCurrentPhoto(
+    BuildContext context,
+    ThermalExporter exporter,
+    RenderSettings renderSettings,
+    TemperatureUnit temperatureUnit,
+  ) async {
+    final options = await _showPngExportOptions(context, renderSettings);
+    if (options == null) return;
+    try {
+      await exporter.shareFramePng(
+        name: widget.photo.filename,
+        frame: _frameFromDevicePhoto(widget.photo),
+        settings: options.settings,
+        points: _points,
+        temperatureUnit: temperatureUnit,
+        includePoints: options.includePoints,
+        includeLegend: options.includeLegend,
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 
   void _addPoint(double xNorm, double yNorm) {

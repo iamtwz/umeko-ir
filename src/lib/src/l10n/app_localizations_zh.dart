@@ -329,10 +329,61 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shareCsv => '保存 CSV';
 
   @override
+  String get exportCsv => '导出 CSV';
+
+  @override
+  String get moreActions => '更多操作';
+
+  @override
+  String get fileInformation => '文件信息';
+
+  @override
+  String get fileName => '文件名';
+
+  @override
+  String get fileFormat => '格式';
+
+  @override
+  String get source => '来源';
+
+  @override
+  String get type => '类型';
+
+  @override
+  String get resolution => '分辨率';
+
+  @override
+  String get frames => '帧数';
+
+  @override
+  String get durationLabel => '时长';
+
+  @override
+  String get temperatureRangeLabel => '温度范围';
+
+  @override
+  String get averageTemperature => '平均温度';
+
+  @override
+  String get fileSize => '文件大小';
+
+  @override
+  String get createdAt => '创建时间';
+
+  @override
   String get photoKind => '图片';
 
   @override
+  String get videoKind => '视频';
+
+  @override
   String get exportOptions => '导出选项';
+
+  @override
+  String get exportingApng => '正在导出 APNG';
+
+  @override
+  String get temperatureCurves => '温度曲线';
 
   @override
   String get includeLegend => '显示图例';

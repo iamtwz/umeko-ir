@@ -331,10 +331,61 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCsv => 'CSV を保存';
 
   @override
+  String get exportCsv => 'CSV をエクスポート';
+
+  @override
+  String get moreActions => 'その他の操作';
+
+  @override
+  String get fileInformation => 'ファイル情報';
+
+  @override
+  String get fileName => 'ファイル名';
+
+  @override
+  String get fileFormat => '形式';
+
+  @override
+  String get source => 'ソース';
+
+  @override
+  String get type => '種類';
+
+  @override
+  String get resolution => '解像度';
+
+  @override
+  String get frames => 'フレーム数';
+
+  @override
+  String get durationLabel => '長さ';
+
+  @override
+  String get temperatureRangeLabel => '温度範囲';
+
+  @override
+  String get averageTemperature => '平均温度';
+
+  @override
+  String get fileSize => 'ファイルサイズ';
+
+  @override
+  String get createdAt => '作成日時';
+
+  @override
   String get photoKind => '画像';
 
   @override
+  String get videoKind => '動画';
+
+  @override
   String get exportOptions => 'エクスポート設定';
+
+  @override
+  String get exportingApng => 'APNG をエクスポート中';
+
+  @override
+  String get temperatureCurves => '温度曲線';
 
   @override
   String get includeLegend => '凡例を表示';

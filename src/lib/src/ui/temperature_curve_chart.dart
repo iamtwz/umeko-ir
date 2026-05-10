@@ -15,12 +15,14 @@ class TemperatureCurveChart extends StatelessWidget {
     required this.points,
     required this.temperatureUnit,
     this.cursor,
+    this.fixedDuration,
   });
 
   final Map<String, List<TemperatureSample>> series;
   final List<ThermalPoint> points;
   final TemperatureUnit temperatureUnit;
   final Duration? cursor;
+  final Duration? fixedDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +60,10 @@ class TemperatureCurveChart extends StatelessWidget {
     final cursorSeconds = cursor == null
         ? null
         : cursor!.inMilliseconds / 1000 - firstElapsed;
-    final bounds = _ChartBounds.fromLines(lines);
+    final fixedMaxX = fixedDuration == null
+        ? null
+        : math.max(1.0, fixedDuration!.inMilliseconds / 1000);
+    final bounds = _ChartBounds.fromLines(lines, fixedMaxX: fixedMaxX);
     return LineChart(
       LineChartData(
         lineBarsData: lines,
@@ -194,7 +199,10 @@ class _ChartBounds {
   final double xInterval;
   final double yInterval;
 
-  factory _ChartBounds.fromLines(List<LineChartBarData> lines) {
+  factory _ChartBounds.fromLines(
+    List<LineChartBarData> lines, {
+    double? fixedMaxX,
+  }) {
     final spots = lines.expand((line) => line.spots).toList();
     var minX = spots.first.x;
     var maxX = spots.first.x;
@@ -207,10 +215,12 @@ class _ChartBounds {
       if (spot.y > maxY) maxY = spot.y;
     }
 
-    final xPadding = _paddingFor(minX, maxX, minimum: 0.5);
+    final xPadding = fixedMaxX == null
+        ? _paddingFor(minX, maxX, minimum: 0.5)
+        : 0.0;
     final yPadding = _paddingFor(minY, maxY, minimum: 0.5);
-    minX = (minX - xPadding).clamp(0, double.infinity);
-    maxX += xPadding;
+    minX = fixedMaxX == null ? (minX - xPadding).clamp(0, double.infinity) : 0;
+    maxX = fixedMaxX ?? maxX + xPadding;
     minY -= yPadding;
     maxY += yPadding;
 
@@ -222,7 +232,7 @@ class _ChartBounds {
 
     return _ChartBounds(
       minX: _alignDown(minX, xInterval).clamp(0, double.infinity),
-      maxX: _alignUp(maxX, xInterval),
+      maxX: fixedMaxX ?? _alignUp(maxX, xInterval),
       minY: _alignDown(minY, yInterval),
       maxY: _alignUp(maxY, yInterval),
       xInterval: xInterval,
