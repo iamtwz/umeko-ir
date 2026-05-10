@@ -159,6 +159,51 @@
   "videoKind": "Video",
   "exportOptions": "Export options",
   "exportingApng": "Exporting APNG",
+  "done": "Done",
+  "exportLog": "Export log",
+  "exportPhasePreparing": "Preparing",
+  "exportPhasePreparingText": "Preparing text",
+  "exportPhaseRenderingFrames": "Rendering frames",
+  "exportPhaseEncodingApng": "Encoding APNG",
+  "exportPhaseSaving": "Saving",
+  "exportPhaseComplete": "Complete",
+  "exportPhaseCancelling": "Cancelling",
+  "exportPhaseCancelled": "Cancelled",
+  "exportMessageStartingApngExport": "Starting APNG export",
+  "exportMessageReadingUirFile": "Reading UIR file",
+  "exportMessageRenderingTextOverlays": "Rendering {count} text overlays",
+  "@exportMessageRenderingTextOverlays": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "exportMessageRenderedTextOverlay": "Rendered text overlay {index}/{total}",
+  "@exportMessageRenderedTextOverlay": {
+    "placeholders": {
+      "index": {},
+      "total": {}
+    }
+  },
+  "exportMessageRenderingFrame": "Rendering frame {index}/{total}",
+  "@exportMessageRenderingFrame": {
+    "placeholders": {
+      "index": {},
+      "total": {}
+    }
+  },
+  "exportMessageRenderedFrame": "Rendered frame {index}/{total}",
+  "@exportMessageRenderedFrame": {
+    "placeholders": {
+      "index": {},
+      "total": {}
+    }
+  },
+  "exportMessageCompressingAnimatedPngFrames": "Compressing animated PNG frames",
+  "exportMessageApngEncodingComplete": "APNG encoding complete",
+  "exportMessageWritingApngFile": "Writing APNG file",
+  "exportMessageApngFileSaved": "APNG file saved",
+  "exportMessageStoppingApngExport": "Stopping APNG export",
+  "exportMessageExportCancelled": "Export cancelled",
   "temperatureCurves": "Temperature curves",
   "includeLegend": "Show legend",
   "includeMeasurementPoints": "Show measurement points",

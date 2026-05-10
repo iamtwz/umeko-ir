@@ -820,6 +820,138 @@ abstract class AppLocalizations {
   /// **'Exporting APNG'**
   String get exportingApng;
 
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @exportLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Export log'**
+  String get exportLog;
+
+  /// No description provided for @exportPhasePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing'**
+  String get exportPhasePreparing;
+
+  /// No description provided for @exportPhasePreparingText.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing text'**
+  String get exportPhasePreparingText;
+
+  /// No description provided for @exportPhaseRenderingFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering frames'**
+  String get exportPhaseRenderingFrames;
+
+  /// No description provided for @exportPhaseEncodingApng.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding APNG'**
+  String get exportPhaseEncodingApng;
+
+  /// No description provided for @exportPhaseSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving'**
+  String get exportPhaseSaving;
+
+  /// No description provided for @exportPhaseComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get exportPhaseComplete;
+
+  /// No description provided for @exportPhaseCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling'**
+  String get exportPhaseCancelling;
+
+  /// No description provided for @exportPhaseCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get exportPhaseCancelled;
+
+  /// No description provided for @exportMessageStartingApngExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting APNG export'**
+  String get exportMessageStartingApngExport;
+
+  /// No description provided for @exportMessageReadingUirFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading UIR file'**
+  String get exportMessageReadingUirFile;
+
+  /// No description provided for @exportMessageRenderingTextOverlays.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering {count} text overlays'**
+  String exportMessageRenderingTextOverlays(Object count);
+
+  /// No description provided for @exportMessageRenderedTextOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendered text overlay {index}/{total}'**
+  String exportMessageRenderedTextOverlay(Object index, Object total);
+
+  /// No description provided for @exportMessageRenderingFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering frame {index}/{total}'**
+  String exportMessageRenderingFrame(Object index, Object total);
+
+  /// No description provided for @exportMessageRenderedFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendered frame {index}/{total}'**
+  String exportMessageRenderedFrame(Object index, Object total);
+
+  /// No description provided for @exportMessageCompressingAnimatedPngFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'Compressing animated PNG frames'**
+  String get exportMessageCompressingAnimatedPngFrames;
+
+  /// No description provided for @exportMessageApngEncodingComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'APNG encoding complete'**
+  String get exportMessageApngEncodingComplete;
+
+  /// No description provided for @exportMessageWritingApngFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing APNG file'**
+  String get exportMessageWritingApngFile;
+
+  /// No description provided for @exportMessageApngFileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'APNG file saved'**
+  String get exportMessageApngFileSaved;
+
+  /// No description provided for @exportMessageStoppingApngExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping APNG export'**
+  String get exportMessageStoppingApngExport;
+
+  /// No description provided for @exportMessageExportCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Export cancelled'**
+  String get exportMessageExportCancelled;
+
   /// No description provided for @temperatureCurves.
   ///
   /// In en, this message translates to:

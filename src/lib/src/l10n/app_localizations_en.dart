@@ -387,6 +387,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportingApng => 'Exporting APNG';
 
   @override
+  String get done => 'Done';
+
+  @override
+  String get exportLog => 'Export log';
+
+  @override
+  String get exportPhasePreparing => 'Preparing';
+
+  @override
+  String get exportPhasePreparingText => 'Preparing text';
+
+  @override
+  String get exportPhaseRenderingFrames => 'Rendering frames';
+
+  @override
+  String get exportPhaseEncodingApng => 'Encoding APNG';
+
+  @override
+  String get exportPhaseSaving => 'Saving';
+
+  @override
+  String get exportPhaseComplete => 'Complete';
+
+  @override
+  String get exportPhaseCancelling => 'Cancelling';
+
+  @override
+  String get exportPhaseCancelled => 'Cancelled';
+
+  @override
+  String get exportMessageStartingApngExport => 'Starting APNG export';
+
+  @override
+  String get exportMessageReadingUirFile => 'Reading UIR file';
+
+  @override
+  String exportMessageRenderingTextOverlays(Object count) {
+    return 'Rendering $count text overlays';
+  }
+
+  @override
+  String exportMessageRenderedTextOverlay(Object index, Object total) {
+    return 'Rendered text overlay $index/$total';
+  }
+
+  @override
+  String exportMessageRenderingFrame(Object index, Object total) {
+    return 'Rendering frame $index/$total';
+  }
+
+  @override
+  String exportMessageRenderedFrame(Object index, Object total) {
+    return 'Rendered frame $index/$total';
+  }
+
+  @override
+  String get exportMessageCompressingAnimatedPngFrames =>
+      'Compressing animated PNG frames';
+
+  @override
+  String get exportMessageApngEncodingComplete => 'APNG encoding complete';
+
+  @override
+  String get exportMessageWritingApngFile => 'Writing APNG file';
+
+  @override
+  String get exportMessageApngFileSaved => 'APNG file saved';
+
+  @override
+  String get exportMessageStoppingApngExport => 'Stopping APNG export';
+
+  @override
+  String get exportMessageExportCancelled => 'Export cancelled';
+
+  @override
   String get temperatureCurves => 'Temperature curves';
 
   @override

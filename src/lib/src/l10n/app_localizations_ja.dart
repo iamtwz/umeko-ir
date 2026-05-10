@@ -385,6 +385,81 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exportingApng => 'APNG をエクスポート中';
 
   @override
+  String get done => '完了';
+
+  @override
+  String get exportLog => 'エクスポートログ';
+
+  @override
+  String get exportPhasePreparing => '準備中';
+
+  @override
+  String get exportPhasePreparingText => 'テキスト準備中';
+
+  @override
+  String get exportPhaseRenderingFrames => 'フレーム描画中';
+
+  @override
+  String get exportPhaseEncodingApng => 'APNG エンコード中';
+
+  @override
+  String get exportPhaseSaving => '保存中';
+
+  @override
+  String get exportPhaseComplete => '完了';
+
+  @override
+  String get exportPhaseCancelling => 'キャンセル中';
+
+  @override
+  String get exportPhaseCancelled => 'キャンセル済み';
+
+  @override
+  String get exportMessageStartingApngExport => 'APNG エクスポートを開始しています';
+
+  @override
+  String get exportMessageReadingUirFile => 'UIR ファイルを読み込んでいます';
+
+  @override
+  String exportMessageRenderingTextOverlays(Object count) {
+    return '$count 件のテキストを描画しています';
+  }
+
+  @override
+  String exportMessageRenderedTextOverlay(Object index, Object total) {
+    return 'テキストを描画しました $index/$total';
+  }
+
+  @override
+  String exportMessageRenderingFrame(Object index, Object total) {
+    return 'フレームを描画しています $index/$total';
+  }
+
+  @override
+  String exportMessageRenderedFrame(Object index, Object total) {
+    return 'フレームを描画しました $index/$total';
+  }
+
+  @override
+  String get exportMessageCompressingAnimatedPngFrames =>
+      'アニメーション PNG フレームを圧縮しています';
+
+  @override
+  String get exportMessageApngEncodingComplete => 'APNG エンコードが完了しました';
+
+  @override
+  String get exportMessageWritingApngFile => 'APNG ファイルを書き込んでいます';
+
+  @override
+  String get exportMessageApngFileSaved => 'APNG ファイルを保存しました';
+
+  @override
+  String get exportMessageStoppingApngExport => 'APNG エクスポートを停止しています';
+
+  @override
+  String get exportMessageExportCancelled => 'エクスポートをキャンセルしました';
+
+  @override
   String get temperatureCurves => '温度曲線';
 
   @override

@@ -1227,12 +1227,7 @@ class LocalGalleryTile extends ConsumerWidget {
                   const Spacer(),
                   PopupMenuButton<_GalleryMenuAction>(
                     tooltip: l10n.moreActions,
-                    iconSize: 22,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
                     onSelected: (action) {
                       switch (action) {
                         case _GalleryMenuAction.export:
@@ -1256,7 +1251,10 @@ class LocalGalleryTile extends ConsumerWidget {
                         child: Text(l10n.fileInformation),
                       ),
                     ],
-                    child: const Icon(Icons.more_vert),
+                    child: const SizedBox.square(
+                      dimension: 36,
+                      child: Center(child: Icon(Icons.more_vert, size: 22)),
+                    ),
                   ),
                 ],
               ),
@@ -1295,6 +1293,8 @@ class LocalGalleryTile extends ConsumerWidget {
     final request = await _showLocalExportDialog(
       context,
       renderSettings,
+      sourceWidth: entry.width,
+      sourceHeight: entry.height,
       supportsApng: entry.kind == GalleryKind.video,
     );
     if (request == null) return;
@@ -1312,6 +1312,7 @@ class LocalGalleryTile extends ConsumerWidget {
             temperatureUnit: temperatureUnit,
             includePoints: options.includePoints,
             includeLegend: options.includeLegend,
+            exportScale: options.exportScale,
           );
         case _LocalExportFormat.apng:
           final options = request.options;
@@ -1337,6 +1338,9 @@ enum _GalleryMenuAction { export, fileInfo }
 
 enum _LocalExportFormat { png, apng, uir }
 
+const _defaultExportScale = 32;
+const _exportScaleOptions = [4, 8, 16, 24, 32, 48, 64];
+
 class _LocalExportRequest {
   const _LocalExportRequest({required this.format, this.options});
 
@@ -1349,22 +1353,27 @@ class _LocalExportOptions {
     required this.includeLegend,
     required this.includePoints,
     required this.settings,
+    required this.exportScale,
   });
 
   final bool includeLegend;
   final bool includePoints;
   final RenderSettings settings;
+  final int exportScale;
 }
 
 Future<_LocalExportRequest?> _showLocalExportDialog(
   BuildContext context,
   RenderSettings initialSettings, {
+  required int sourceWidth,
+  required int sourceHeight,
   required bool supportsApng,
 }) {
   var format = _LocalExportFormat.png;
   var includeLegend = true;
   var includePoints = true;
   var settings = initialSettings;
+  var exportScale = _defaultExportScale;
   final l10n = context.l10n;
   final formats = [
     _LocalExportFormat.png,
@@ -1425,6 +1434,12 @@ Future<_LocalExportRequest?> _showLocalExportDialog(
                       const Divider(height: 24),
                       _ExportRenderSettingsFields(
                         settings: settings,
+                        sourceWidth: sourceWidth,
+                        sourceHeight: sourceHeight,
+                        exportScale: exportScale,
+                        onScaleChanged: (value) {
+                          setState(() => exportScale = value);
+                        },
                         onChanged: (value) => setState(() => settings = value),
                       ),
                     ],
@@ -1446,6 +1461,7 @@ Future<_LocalExportRequest?> _showLocalExportDialog(
                             includeLegend: includeLegend,
                             includePoints: includePoints,
                             settings: settings,
+                            exportScale: exportScale,
                           )
                         : null,
                   ),
@@ -1471,13 +1487,30 @@ String _localExportFormatLabel(
   };
 }
 
+String _exportScaleLabel(
+  int scale,
+  int sourceWidth,
+  int sourceHeight,
+  RenderSettings settings,
+) {
+  final size = displayOrientedSize(
+    sourceWidth,
+    sourceHeight,
+    settings.rotation,
+  );
+  return '${scale}x (${size.width * scale}x${size.height * scale}px)';
+}
+
 Future<_LocalExportOptions?> _showPngExportOptions(
   BuildContext context,
-  RenderSettings initialSettings,
-) {
+  RenderSettings initialSettings, {
+  required int sourceWidth,
+  required int sourceHeight,
+}) {
   var includeLegend = true;
   var includePoints = true;
   var settings = initialSettings;
+  var exportScale = _defaultExportScale;
   final l10n = context.l10n;
   return showDialog<_LocalExportOptions>(
     context: context,
@@ -1511,6 +1544,12 @@ Future<_LocalExportOptions?> _showPngExportOptions(
                     const Divider(height: 24),
                     _ExportRenderSettingsFields(
                       settings: settings,
+                      sourceWidth: sourceWidth,
+                      sourceHeight: sourceHeight,
+                      exportScale: exportScale,
+                      onScaleChanged: (value) {
+                        setState(() => exportScale = value);
+                      },
                       onChanged: (value) => setState(() => settings = value),
                     ),
                   ],
@@ -1528,6 +1567,7 @@ Future<_LocalExportOptions?> _showPngExportOptions(
                     includeLegend: includeLegend,
                     includePoints: includePoints,
                     settings: settings,
+                    exportScale: exportScale,
                   ),
                 ),
                 child: Text(l10n.sharePng),
@@ -1543,10 +1583,18 @@ Future<_LocalExportOptions?> _showPngExportOptions(
 class _ExportRenderSettingsFields extends StatelessWidget {
   const _ExportRenderSettingsFields({
     required this.settings,
+    required this.sourceWidth,
+    required this.sourceHeight,
+    required this.exportScale,
+    required this.onScaleChanged,
     required this.onChanged,
   });
 
   final RenderSettings settings;
+  final int sourceWidth;
+  final int sourceHeight;
+  final int exportScale;
+  final ValueChanged<int> onScaleChanged;
   final ValueChanged<RenderSettings> onChanged;
 
   @override
@@ -1555,6 +1603,24 @@ class _ExportRenderSettingsFields extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        DropdownButtonFormField<int>(
+          initialValue: exportScale,
+          decoration: InputDecoration(labelText: l10n.resolution),
+          items: [
+            for (final value in _exportScaleOptions)
+              DropdownMenuItem(
+                value: value,
+                child: Text(
+                  _exportScaleLabel(value, sourceWidth, sourceHeight, settings),
+                ),
+              ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            onScaleChanged(value);
+          },
+        ),
+        const SizedBox(height: 12),
         DropdownButtonFormField<ThermalColorMap>(
           initialValue: settings.colorMap,
           decoration: InputDecoration(labelText: l10n.colorMap),
@@ -1606,37 +1672,186 @@ Future<void> _shareApngWithProgress(
   _LocalExportOptions options,
   TemperatureUnit temperatureUnit,
 ) async {
+  final l10n = context.l10n;
+  final labels = _apngExportLabels(l10n);
   var progress = 0.0;
+  var phase = labels.preparing;
+  var message = l10n.exportMessageStartingApngExport;
+  final logs = <String>['${labels.preparing}: $message'];
+  final logScrollController = ScrollController();
+  final closeCompleter = Completer<void>();
   StateSetter? updateDialog;
-  final rootNavigator = Navigator.of(context, rootNavigator: true);
-  unawaited(
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            updateDialog = setState;
-            return AlertDialog(
-              title: Text(context.l10n.exportingApng),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  LinearProgressIndicator(value: progress),
-                  const SizedBox(height: 12),
-                  Text(
-                    '${(progress * 100).clamp(0, 100).round()}%',
-                    textAlign: TextAlign.center,
+  NavigatorState? dialogNavigator;
+  var dialogVisible = false;
+  var cancelRequested = false;
+  var isCancelling = false;
+  var isComplete = false;
+  var logsExpanded = false;
+
+  void scrollLogsToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!logsExpanded || !logScrollController.hasClients) return;
+      logScrollController.animateTo(
+        logScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  void addLog(String line) {
+    if (logs.isNotEmpty && logs.last == line) return;
+    logs.add(line);
+    if (logs.length > 80) logs.removeAt(0);
+    scrollLogsToEnd();
+  }
+
+  void showProgressDialog() {
+    if (dialogVisible || !context.mounted) return;
+    dialogVisible = true;
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          dialogNavigator = Navigator.of(context, rootNavigator: true);
+          return StatefulBuilder(
+            builder: (context, setState) {
+              updateDialog = setState;
+              return AlertDialog(
+                title: Text(context.l10n.exportingApng),
+                content: SizedBox(
+                  width: 460,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              phase,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text('${(progress * 100).clamp(0, 100).round()}%'),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      LinearProgressIndicator(value: progress),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        onTap: () {
+                          setState(() {
+                            logsExpanded = !logsExpanded;
+                          });
+                          if (logsExpanded) scrollLogsToEnd();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                logsExpanded
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                l10n.exportLog,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (logsExpanded) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 160,
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: SingleChildScrollView(
+                            controller: logScrollController,
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (final log in logs)
+                                  Text(
+                                    log,
+                                    style: const TextStyle(
+                                      fontFamily: 'Menlo',
+                                      fontFamilyFallback: [
+                                        'SF Mono',
+                                        'Monaco',
+                                        'Courier New',
+                                        'Courier',
+                                      ],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: isCancelling
+                        ? null
+                        : () {
+                            if (isComplete) {
+                              if (!closeCompleter.isCompleted) {
+                                closeCompleter.complete();
+                              }
+                              Navigator.of(context, rootNavigator: true).pop();
+                              return;
+                            }
+                            setState(() {
+                              cancelRequested = true;
+                              isCancelling = true;
+                              phase = l10n.exportPhaseCancelling;
+                              message = l10n.exportMessageStoppingApngExport;
+                              addLog('$phase: $message');
+                            });
+                          },
+                    child: Text(isComplete ? l10n.done : l10n.cancel),
                   ),
                 ],
-              ),
-            );
-          },
-        );
-      },
-    ),
-  );
+              );
+            },
+          );
+        },
+      ).then((_) {
+        if (!closeCompleter.isCompleted) closeCompleter.complete();
+      }),
+    );
+  }
+
   try {
     await exporter.shareApng(
       entry,
@@ -1644,14 +1859,90 @@ Future<void> _shareApngWithProgress(
       temperatureUnit: temperatureUnit,
       includePoints: options.includePoints,
       includeLegend: options.includeLegend,
-      onProgress: (completed, total) {
-        if (total <= 0) return;
-        updateDialog?.call(() => progress = completed / total);
+      exportScale: options.exportScale,
+      shouldCancel: () => cancelRequested,
+      onProgress: (event) {
+        showProgressDialog();
+        updateDialog?.call(() {
+          progress = event.value.clamp(0.0, 1.0);
+          phase = event.phase;
+          message = event.message;
+          addLog('${event.phase}: ${event.message}');
+        });
       },
+      labels: labels,
     );
+    if (dialogVisible) {
+      updateDialog?.call(() {
+        progress = 1;
+        phase = labels.complete;
+        message = labels.apngFileSaved;
+        isComplete = true;
+        isCancelling = false;
+        addLog('$phase: $message');
+      });
+      await closeCompleter.future;
+    }
+  } on ThermalExportCancelled {
+    if (dialogVisible) {
+      updateDialog?.call(() {
+        phase = l10n.exportPhaseCancelled;
+        message = l10n.exportMessageExportCancelled;
+        isComplete = true;
+        isCancelling = false;
+        addLog('$phase: $message');
+      });
+      await closeCompleter.future;
+    }
+  } catch (_) {
+    if (dialogVisible && dialogNavigator?.canPop() == true) {
+      dialogNavigator?.pop();
+    }
+    rethrow;
   } finally {
-    if (rootNavigator.canPop()) rootNavigator.pop();
+    logScrollController.dispose();
   }
+}
+
+ThermalApngExportLabels _apngExportLabels(AppLocalizations l10n) {
+  return ThermalApngExportLabels(
+    preparing: l10n.exportPhasePreparing,
+    preparingText: l10n.exportPhasePreparingText,
+    renderingFrames: l10n.exportPhaseRenderingFrames,
+    encodingApng: l10n.exportPhaseEncodingApng,
+    saving: l10n.exportPhaseSaving,
+    complete: l10n.exportPhaseComplete,
+    readingUirFile: l10n.exportMessageReadingUirFile,
+    renderingTextOverlays: _countTemplate(
+      l10n.exportMessageRenderingTextOverlays,
+    ),
+    renderedTextOverlay: _indexTotalTemplate(
+      l10n.exportMessageRenderedTextOverlay,
+    ),
+    renderingFrame: _indexTotalTemplate(l10n.exportMessageRenderingFrame),
+    renderedFrame: _indexTotalTemplate(l10n.exportMessageRenderedFrame),
+    compressingAnimatedPngFrames:
+        l10n.exportMessageCompressingAnimatedPngFrames,
+    apngEncodingComplete: l10n.exportMessageApngEncodingComplete,
+    writingApngFile: l10n.exportMessageWritingApngFile,
+    apngFileSaved: l10n.exportMessageApngFileSaved,
+  );
+}
+
+String _countTemplate(String Function(Object count) formatter) {
+  const countToken = '__COUNT__';
+  return formatter(countToken).replaceAll(countToken, '{count}');
+}
+
+String _indexTotalTemplate(
+  String Function(Object index, Object total) formatter,
+) {
+  const indexToken = '__INDEX__';
+  const totalToken = '__TOTAL__';
+  return formatter(
+    indexToken,
+    totalToken,
+  ).replaceAll(indexToken, '{index}').replaceAll(totalToken, '{total}');
 }
 
 class _LocalGalleryPreview extends ConsumerStatefulWidget {
@@ -2298,12 +2589,7 @@ class GalleryTile extends ConsumerWidget {
                   ),
                   PopupMenuButton<_GalleryMenuAction>(
                     tooltip: l10n.moreActions,
-                    iconSize: 22,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
                     onSelected: (action) {
                       switch (action) {
                         case _GalleryMenuAction.export:
@@ -2328,6 +2614,10 @@ class GalleryTile extends ConsumerWidget {
                         child: Text(l10n.fileInformation),
                       ),
                     ],
+                    child: const SizedBox.square(
+                      dimension: 36,
+                      child: Center(child: Icon(Icons.more_vert, size: 22)),
+                    ),
                   ),
                 ],
               ),
@@ -2376,7 +2666,12 @@ class GalleryTile extends ConsumerWidget {
     TemperatureUnit temperatureUnit,
     List<ThermalPoint> points,
   ) async {
-    final options = await _showPngExportOptions(context, renderSettings);
+    final options = await _showPngExportOptions(
+      context,
+      renderSettings,
+      sourceWidth: photo.width,
+      sourceHeight: photo.height,
+    );
     if (options == null) return;
     try {
       await exporter.shareFramePng(
@@ -2387,6 +2682,7 @@ class GalleryTile extends ConsumerWidget {
         temperatureUnit: temperatureUnit,
         includePoints: options.includePoints,
         includeLegend: options.includeLegend,
+        exportScale: options.exportScale,
       );
     } catch (error) {
       if (!context.mounted) return;
@@ -2452,7 +2748,12 @@ class _DevicePhotoViewerState extends ConsumerState<_DevicePhotoViewer> {
     RenderSettings renderSettings,
     TemperatureUnit temperatureUnit,
   ) async {
-    final options = await _showPngExportOptions(context, renderSettings);
+    final options = await _showPngExportOptions(
+      context,
+      renderSettings,
+      sourceWidth: widget.photo.width,
+      sourceHeight: widget.photo.height,
+    );
     if (options == null) return;
     try {
       await exporter.shareFramePng(
@@ -2463,6 +2764,7 @@ class _DevicePhotoViewerState extends ConsumerState<_DevicePhotoViewer> {
         temperatureUnit: temperatureUnit,
         includePoints: options.includePoints,
         includeLegend: options.includeLegend,
+        exportScale: options.exportScale,
       );
     } catch (error) {
       if (!context.mounted) return;

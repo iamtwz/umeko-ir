@@ -9,6 +9,9 @@ import '../core/thermal_rendering.dart';
 import '../core/temperature_unit.dart';
 import 'thermal_points_overlay.dart';
 
+const _statsFontFamily = 'Menlo';
+const _statsFontFallback = ['SF Mono', 'Monaco', 'Courier New', 'Courier'];
+
 class ThermalRasterView extends StatefulWidget {
   const ThermalRasterView({
     super.key,
@@ -287,13 +290,19 @@ class _ThermalImagePainter extends CustomPainter {
       'MIN ${temperatureUnit.format(extrema.min)}',
       'AVG ${temperatureUnit.format(extrema.avg)}',
     ];
+    final painters = [
+      for (final line in lines)
+        _textPainter(line, Colors.white, 12, mono: true),
+    ];
+    final maxTextWidth = painters
+        .map((painter) => painter.width)
+        .reduce((a, b) => a > b ? a : b);
     var y = 8.0;
-    for (final line in lines) {
-      final textPainter = _textPainter(line, Colors.white, 12);
+    for (final textPainter in painters) {
       final rect = Rect.fromLTWH(
         8,
         y - 3,
-        textPainter.width + 10,
+        maxTextWidth + 10,
         textPainter.height + 6,
       );
       canvas.drawRRect(
@@ -328,7 +337,12 @@ class _ThermalImagePainter extends CustomPainter {
     textPainter.paint(canvas, Offset(dx, dy));
   }
 
-  TextPainter _textPainter(String text, Color color, double size) {
+  TextPainter _textPainter(
+    String text,
+    Color color,
+    double size, {
+    bool mono = false,
+  }) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
@@ -336,6 +350,8 @@ class _ThermalImagePainter extends CustomPainter {
           color: color,
           fontSize: size,
           fontWeight: FontWeight.w700,
+          fontFamily: mono ? _statsFontFamily : null,
+          fontFamilyFallback: mono ? _statsFontFallback : null,
         ),
       ),
       textDirection: TextDirection.ltr,

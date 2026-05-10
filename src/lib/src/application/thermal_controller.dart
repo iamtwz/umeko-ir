@@ -181,6 +181,7 @@ class ThermalController extends Notifier<ThermalState> {
       final connected = await _connectWithFreshPort();
       if (!connected) return;
       state = state.copyWith(connected: true, busy: false);
+      await startStream();
     } catch (e) {
       if (!_isMissingPortError(e)) {
         state = state.copyWith(busy: false, error: e.toString());
@@ -191,6 +192,7 @@ class ThermalController extends Notifier<ThermalState> {
         final connected = await _connectWithFreshPort(ignoreSelected: true);
         if (!connected) return;
         state = state.copyWith(connected: true, busy: false);
+        await startStream();
       } catch (retryError) {
         state = state.copyWith(busy: false, error: retryError.toString());
       }

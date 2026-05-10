@@ -383,6 +383,80 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportingApng => '正在导出 APNG';
 
   @override
+  String get done => '完成';
+
+  @override
+  String get exportLog => '导出日志';
+
+  @override
+  String get exportPhasePreparing => '准备中';
+
+  @override
+  String get exportPhasePreparingText => '准备文字';
+
+  @override
+  String get exportPhaseRenderingFrames => '渲染帧';
+
+  @override
+  String get exportPhaseEncodingApng => '编码 APNG';
+
+  @override
+  String get exportPhaseSaving => '保存中';
+
+  @override
+  String get exportPhaseComplete => '已完成';
+
+  @override
+  String get exportPhaseCancelling => '正在取消';
+
+  @override
+  String get exportPhaseCancelled => '已取消';
+
+  @override
+  String get exportMessageStartingApngExport => '开始导出 APNG';
+
+  @override
+  String get exportMessageReadingUirFile => '读取 UIR 文件';
+
+  @override
+  String exportMessageRenderingTextOverlays(Object count) {
+    return '渲染 $count 个文字标注';
+  }
+
+  @override
+  String exportMessageRenderedTextOverlay(Object index, Object total) {
+    return '已渲染文字标注 $index/$total';
+  }
+
+  @override
+  String exportMessageRenderingFrame(Object index, Object total) {
+    return '正在渲染帧 $index/$total';
+  }
+
+  @override
+  String exportMessageRenderedFrame(Object index, Object total) {
+    return '已渲染帧 $index/$total';
+  }
+
+  @override
+  String get exportMessageCompressingAnimatedPngFrames => '压缩动画 PNG 帧';
+
+  @override
+  String get exportMessageApngEncodingComplete => 'APNG 编码完成';
+
+  @override
+  String get exportMessageWritingApngFile => '写入 APNG 文件';
+
+  @override
+  String get exportMessageApngFileSaved => 'APNG 文件已保存';
+
+  @override
+  String get exportMessageStoppingApngExport => '正在停止 APNG 导出';
+
+  @override
+  String get exportMessageExportCancelled => '导出已取消';
+
+  @override
   String get temperatureCurves => '温度曲线';
 
   @override

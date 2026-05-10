@@ -62,25 +62,26 @@ void main() {
     );
   });
 
-  test('startStream handles serial write failures without throwing', () async {
-    final serial = _FailingWriteSerialAdapter();
-    final container = ProviderContainer(
-      overrides: [serialAdapterProvider.overrideWithValue(serial)],
-    );
-    addTearDown(container.dispose);
+  test(
+    'connect auto-start stream handles write failures without throwing',
+    () async {
+      final serial = _FailingWriteSerialAdapter();
+      final container = ProviderContainer(
+        overrides: [serialAdapterProvider.overrideWithValue(serial)],
+      );
+      addTearDown(container.dispose);
 
-    final controller = container.read(thermalControllerProvider.notifier);
-    await Future<void>.delayed(Duration.zero);
-    await controller.connect();
+      final controller = container.read(thermalControllerProvider.notifier);
+      await Future<void>.delayed(Duration.zero);
+      await controller.connect();
 
-    await controller.startStream();
-
-    final state = container.read(thermalControllerProvider);
-    expect(state.connected, isFalse);
-    expect(state.streaming, isFalse);
-    expect(state.error, contains('Access denied'));
-    expect(serial.connected, isFalse);
-  });
+      final state = container.read(thermalControllerProvider);
+      expect(state.connected, isFalse);
+      expect(state.streaming, isFalse);
+      expect(state.error, contains('Access denied'));
+      expect(serial.connected, isFalse);
+    },
+  );
 
   test('stopStream handles serial write failures without throwing', () async {
     final serial = _CommandFailingSerialAdapter(failCommand: 'stop_stream');
@@ -92,7 +93,6 @@ void main() {
     final controller = container.read(thermalControllerProvider.notifier);
     await Future<void>.delayed(Duration.zero);
     await controller.connect();
-    await controller.startStream();
 
     expect(container.read(thermalControllerProvider).streaming, isTrue);
 
@@ -115,7 +115,6 @@ void main() {
     final controller = container.read(thermalControllerProvider.notifier);
     await Future<void>.delayed(Duration.zero);
     await controller.connect();
-    await controller.startStream();
 
     expect(container.read(thermalControllerProvider).streaming, isTrue);
 

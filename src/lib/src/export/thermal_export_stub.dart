@@ -5,6 +5,61 @@ import '../core/thermal_rendering.dart';
 import '../storage/gallery_entry.dart';
 import '../storage/uir_repository_base.dart';
 
+class ThermalExportProgress {
+  const ThermalExportProgress({
+    required this.value,
+    required this.phase,
+    required this.message,
+  });
+
+  final double value;
+  final String phase;
+  final String message;
+}
+
+class ThermalApngExportLabels {
+  const ThermalApngExportLabels({
+    this.preparing = 'Preparing',
+    this.preparingText = 'Preparing text',
+    this.renderingFrames = 'Rendering frames',
+    this.encodingApng = 'Encoding APNG',
+    this.saving = 'Saving',
+    this.complete = 'Complete',
+    this.readingUirFile = 'Reading UIR file',
+    this.renderingTextOverlays = 'Rendering {count} text overlays',
+    this.renderedTextOverlay = 'Rendered text overlay {index}/{total}',
+    this.renderingFrame = 'Rendering frame {index}/{total}',
+    this.renderedFrame = 'Rendered frame {index}/{total}',
+    this.compressingAnimatedPngFrames = 'Compressing animated PNG frames',
+    this.apngEncodingComplete = 'APNG encoding complete',
+    this.writingApngFile = 'Writing APNG file',
+    this.apngFileSaved = 'APNG file saved',
+  });
+
+  final String preparing;
+  final String preparingText;
+  final String renderingFrames;
+  final String encodingApng;
+  final String saving;
+  final String complete;
+  final String readingUirFile;
+  final String renderingTextOverlays;
+  final String renderedTextOverlay;
+  final String renderingFrame;
+  final String renderedFrame;
+  final String compressingAnimatedPngFrames;
+  final String apngEncodingComplete;
+  final String writingApngFile;
+  final String apngFileSaved;
+}
+
+class ThermalExportCancelled implements Exception {
+  const ThermalExportCancelled();
+
+  @override
+  String toString() => 'Export cancelled.';
+}
+
 class ThermalExporter {
   const ThermalExporter({required this.repository});
 
@@ -37,6 +92,7 @@ class ThermalExporter {
     TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
+    int exportScale = 32,
   }) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',
@@ -51,6 +107,7 @@ class ThermalExporter {
     TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
+    int exportScale = 32,
   }) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',
@@ -63,7 +120,10 @@ class ThermalExporter {
     TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
-    void Function(int completed, int total)? onProgress,
+    int exportScale = 32,
+    void Function(ThermalExportProgress progress)? onProgress,
+    bool Function()? shouldCancel,
+    ThermalApngExportLabels labels = const ThermalApngExportLabels(),
   }) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',
