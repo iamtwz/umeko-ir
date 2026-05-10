@@ -1,3 +1,4 @@
+import 'temperature_unit.dart';
 import 'thermal_points.dart';
 import 'uir_format.dart';
 
@@ -27,13 +28,16 @@ Map<String, List<TemperatureSample>> buildTemperatureSeries({
 String temperatureSeriesCsv({
   required List<UirFrameRecord> frames,
   required List<ThermalPoint> points,
+  TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
 }) {
   final buffer = StringBuffer(
-    'timestamp_iso8601,elapsed_ms,frame_index,point_id,point_label,x_norm,y_norm,temperature_c\n',
+    'timestamp_iso8601,elapsed_ms,frame_index,point_id,point_label,x_norm,y_norm,temperature_${temperatureUnit.csvSuffix.toLowerCase()}\n',
   );
   for (final record in frames) {
     for (final point in points) {
-      final value = sampleThermalPoint(record.frame, point);
+      final value = temperatureUnit.convertFromCelsius(
+        sampleThermalPoint(record.frame, point),
+      );
       buffer
         ..write(record.frame.timestamp.toUtc().toIso8601String())
         ..write(',')
@@ -59,9 +63,10 @@ String temperatureSeriesCsv({
 String temperatureSamplesCsv({
   required Map<String, List<TemperatureSample>> series,
   required List<ThermalPoint> points,
+  TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
 }) {
   final buffer = StringBuffer(
-    'elapsed_ms,point_id,point_label,x_norm,y_norm,temperature_c\n',
+    'elapsed_ms,point_id,point_label,x_norm,y_norm,temperature_${temperatureUnit.csvSuffix.toLowerCase()}\n',
   );
   for (final point in points) {
     final samples = series[point.id] ?? const <TemperatureSample>[];
@@ -77,7 +82,11 @@ String temperatureSamplesCsv({
         ..write(',')
         ..write(point.yNorm.toStringAsFixed(6))
         ..write(',')
-        ..write(sample.temperature.toStringAsFixed(2))
+        ..write(
+          temperatureUnit
+              .convertFromCelsius(sample.temperature)
+              .toStringAsFixed(2),
+        )
         ..write('\n');
     }
   }

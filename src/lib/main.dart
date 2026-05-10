@@ -23,6 +23,7 @@ import 'src/core/device_gallery.dart';
 import 'src/core/thermal_points.dart';
 import 'src/core/thermal_frame.dart';
 import 'src/core/thermal_rendering.dart';
+import 'src/core/temperature_unit.dart';
 import 'src/export/thermal_export.dart';
 import 'src/l10n/app_localizations.dart';
 import 'src/playback/playback_controller.dart';
@@ -114,12 +115,16 @@ String _formatDuration(Duration duration) {
   return '$minutes:$seconds';
 }
 
-String _devicePhotoInfo(BuildContext context, DevicePhoto photo) {
+String _devicePhotoInfo(
+  BuildContext context,
+  DevicePhoto photo,
+  TemperatureUnit unit,
+) {
   final l10n = context.l10n;
   return [
     '${photo.width}x${photo.height}',
     l10n.photoKind,
-    _temperatureRange(photo.tMin, photo.tMax),
+    _temperatureRange(photo.tMin, photo.tMax, unit),
   ].join('  ');
 }
 
@@ -127,6 +132,7 @@ String _galleryEntryInfo(
   BuildContext context,
   GalleryEntry entry,
   Duration? duration,
+  TemperatureUnit unit,
 ) {
   final l10n = context.l10n;
   return [
@@ -136,12 +142,12 @@ String _galleryEntryInfo(
         : l10n.framesMetric(entry.frameCount ?? 0),
     if (entry.kind == GalleryKind.video && duration != null)
       _formatDuration(duration),
-    _temperatureRange(entry.tMin, entry.tMax),
+    _temperatureRange(entry.tMin, entry.tMax, unit),
   ].join('  ');
 }
 
-String _temperatureRange(double min, double max) {
-  return '${min.toStringAsFixed(1)}-${max.toStringAsFixed(1)} C';
+String _temperatureRange(double min, double max, TemperatureUnit unit) {
+  return unit.formatRange(min, max);
 }
 
 class AppShell extends ConsumerStatefulWidget {
@@ -700,10 +706,17 @@ class LiveTemperatureChart extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(temperatureHistoryProvider);
     final points = ref.watch(thermalPointsProvider);
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: TemperatureCurveChart(series: history.series, points: points),
+        child: TemperatureCurveChart(
+          series: history.series,
+          points: points,
+          temperatureUnit: temperatureUnit,
+        ),
       ),
     );
   }
@@ -847,6 +860,9 @@ class ThermalViewerCard extends ConsumerWidget {
     final l10n = context.l10n;
     final points = ref.watch(thermalPointsProvider);
     final pointsController = ref.read(thermalPointsProvider.notifier);
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -862,6 +878,7 @@ class ThermalViewerCard extends ConsumerWidget {
                     frame,
                     settings: state.renderSettings,
                     scale: 14,
+                    temperatureUnit: temperatureUnit,
                     points: points,
                     onPointAdded: pointsController.add,
                     onPointMoved: pointsController.move,
@@ -1120,6 +1137,9 @@ class LocalGalleryTile extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
     final exporter = ThermalExporter(
       repository: ref.read(uirRepositoryProvider),
     );
@@ -1153,6 +1173,7 @@ class LocalGalleryTile extends ConsumerWidget {
                       action,
                       exporter,
                       renderSettings,
+                      temperatureUnit,
                     ),
                     itemBuilder: (context) => [
                       PopupMenuItem(
@@ -1184,7 +1205,7 @@ class LocalGalleryTile extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                _galleryEntryInfo(context, entry, duration),
+                _galleryEntryInfo(context, entry, duration, temperatureUnit),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1204,6 +1225,7 @@ class LocalGalleryTile extends ConsumerWidget {
     _LocalExportAction action,
     ThermalExporter exporter,
     RenderSettings renderSettings,
+    TemperatureUnit temperatureUnit,
   ) async {
     try {
       switch (action) {
@@ -1216,6 +1238,7 @@ class LocalGalleryTile extends ConsumerWidget {
           await exporter.sharePng(
             entry,
             options.settings,
+            temperatureUnit: temperatureUnit,
             includePoints: options.includePoints,
             includeLegend: options.includeLegend,
           );
@@ -1226,6 +1249,7 @@ class LocalGalleryTile extends ConsumerWidget {
           await exporter.shareApng(
             entry,
             options.settings,
+            temperatureUnit: temperatureUnit,
             includePoints: options.includePoints,
             includeLegend: options.includeLegend,
           );
@@ -1416,6 +1440,9 @@ class _LocalGalleryPreviewState extends ConsumerState<_LocalGalleryPreview> {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
     final colorScheme = Theme.of(context).colorScheme;
     return FutureBuilder<ThermalFrame?>(
       future: _frameFuture,
@@ -1444,6 +1471,7 @@ class _LocalGalleryPreviewState extends ConsumerState<_LocalGalleryPreview> {
           settings: renderSettings,
           scale: 4,
           showOverlay: false,
+          temperatureUnit: temperatureUnit,
         );
       },
     );
@@ -1544,6 +1572,9 @@ class _LocalUirPlaybackView extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
     final liveState = ref.watch(thermalControllerProvider);
     final liveController = ref.read(thermalControllerProvider.notifier);
     final exporter = ThermalExporter(
@@ -1577,6 +1608,7 @@ class _LocalUirPlaybackView extends ConsumerWidget {
                     frame,
                     settings: renderSettings,
                     scale: wide ? 10 : 8,
+                    temperatureUnit: temperatureUnit,
                     points: points,
                     onPointAdded: controller.addPoint,
                     onPointMoved: controller.movePoint,
@@ -1587,6 +1619,7 @@ class _LocalUirPlaybackView extends ConsumerWidget {
               series: series,
               points: points,
               exporter: exporter,
+              temperatureUnit: temperatureUnit,
             );
             final bottomPanel = wide
                 ? Row(
@@ -1631,12 +1664,14 @@ class _PlaybackControls extends StatelessWidget {
     required this.series,
     required this.points,
     required this.exporter,
+    required this.temperatureUnit,
   });
 
   final UirPlaybackController controller;
   final Map<String, List<TemperatureSample>> series;
   final List<ThermalPoint> points;
   final ThermalExporter exporter;
+  final TemperatureUnit temperatureUnit;
 
   @override
   Widget build(BuildContext context) {
@@ -1762,6 +1797,7 @@ class _PlaybackControls extends StatelessWidget {
                         series: series,
                         points: points,
                         cursor: controller.position,
+                        temperatureUnit: temperatureUnit,
                       ),
                     ),
                   ],
@@ -1785,6 +1821,7 @@ class _PlaybackControls extends StatelessWidget {
         csv: temperatureSeriesCsv(
           frames: controller.document.frames,
           points: points,
+          temperatureUnit: temperatureUnit,
         ),
       );
     } catch (error) {
@@ -1805,6 +1842,9 @@ class GalleryTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
+    );
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
     );
     final canDelete = ref.watch(
       thermalControllerProvider.select(
@@ -1839,13 +1879,14 @@ class GalleryTile extends ConsumerWidget {
                   settings: renderSettings,
                   scale: 4,
                   showOverlay: false,
+                  temperatureUnit: temperatureUnit,
                 ),
               ),
             ),
             ListTile(
               dense: true,
               title: Text(photo.filename, overflow: TextOverflow.ellipsis),
-              subtitle: Text(_devicePhotoInfo(context, photo)),
+              subtitle: Text(_devicePhotoInfo(context, photo, temperatureUnit)),
               trailing: IconButton(
                 tooltip: l10n.delete,
                 icon: const Icon(Icons.delete_outline),
@@ -1940,6 +1981,9 @@ class _ThermalFrameReviewView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final liveState = ref.watch(thermalControllerProvider);
     final liveController = ref.read(thermalControllerProvider.notifier);
+    final temperatureUnit = ref.watch(
+      appSettingsProvider.select((settings) => settings.temperatureUnit),
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
@@ -1947,6 +1991,7 @@ class _ThermalFrameReviewView extends ConsumerWidget {
           frame,
           settings: liveState.renderSettings,
           scale: wide ? 10 : 8,
+          temperatureUnit: temperatureUnit,
           points: points,
           onPointAdded: onPointAdded,
           onPointMoved: onPointMoved,
@@ -2638,6 +2683,24 @@ class AppSettingsPane extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 12),
+                DropdownButtonFormField<TemperatureUnit>(
+                  initialValue: settings.temperatureUnit,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.thermostat),
+                    labelText: l10n.temperatureUnit,
+                  ),
+                  items: [
+                    for (final unit in TemperatureUnit.values)
+                      DropdownMenuItem(
+                        value: unit,
+                        child: Text(unit.label(l10n)),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) controller.setTemperatureUnit(value);
+                  },
+                ),
+                const SizedBox(height: 12),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: const Icon(Icons.analytics_outlined),
@@ -2971,6 +3034,16 @@ extension AppThemePreferenceLabel on AppThemePreference {
       AppThemePreference.system => l10n.systemTheme,
       AppThemePreference.light => l10n.lightTheme,
       AppThemePreference.dark => l10n.darkTheme,
+    };
+  }
+}
+
+extension TemperatureUnitLabel on TemperatureUnit {
+  String label(AppLocalizations l10n) {
+    return switch (this) {
+      TemperatureUnit.celsius => l10n.temperatureUnitCelsius,
+      TemperatureUnit.fahrenheit => l10n.temperatureUnitFahrenheit,
+      TemperatureUnit.kelvin => l10n.temperatureUnitKelvin,
     };
   }
 }

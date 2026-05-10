@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../core/thermal_frame.dart';
 import '../core/thermal_points.dart';
 import '../core/thermal_rendering.dart';
+import '../core/temperature_unit.dart';
 import 'thermal_points_overlay.dart';
 
 class ThermalRasterView extends StatefulWidget {
@@ -20,6 +21,7 @@ class ThermalRasterView extends StatefulWidget {
     this.sensorType = ThermalSensorType.legacy,
     this.scale = 12,
     this.showOverlay = true,
+    this.temperatureUnit = TemperatureUnit.celsius,
     this.points = const [],
     this.onPointAdded,
     this.onPointMoved,
@@ -32,6 +34,7 @@ class ThermalRasterView extends StatefulWidget {
     required RenderSettings settings,
     int scale = 12,
     bool showOverlay = true,
+    TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     List<ThermalPoint> points = const [],
     void Function(double xNorm, double yNorm)? onPointAdded,
     void Function(String id, double xNorm, double yNorm)? onPointMoved,
@@ -48,6 +51,7 @@ class ThermalRasterView extends StatefulWidget {
       settings: settings,
       scale: scale,
       showOverlay: showOverlay,
+      temperatureUnit: temperatureUnit,
       points: points,
       onPointAdded: onPointAdded,
       onPointMoved: onPointMoved,
@@ -64,6 +68,7 @@ class ThermalRasterView extends StatefulWidget {
   final RenderSettings settings;
   final int scale;
   final bool showOverlay;
+  final TemperatureUnit temperatureUnit;
   final List<ThermalPoint> points;
   final void Function(double xNorm, double yNorm)? onPointAdded;
   final void Function(String id, double xNorm, double yNorm)? onPointMoved;
@@ -173,6 +178,7 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
                       settings: widget.settings,
                       extrema: extrema,
                       showOverlay: widget.showOverlay,
+                      temperatureUnit: widget.temperatureUnit,
                     ),
                     child: ThermalPointsOverlay(
                       frame: ThermalFrame(
@@ -187,6 +193,7 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
                         tAvg: extrema.avg,
                       ),
                       settings: widget.settings,
+                      temperatureUnit: widget.temperatureUnit,
                       points: widget.points,
                       onPointAdded: widget.onPointAdded,
                       onPointMoved: widget.onPointMoved,
@@ -208,6 +215,7 @@ class _ThermalImagePainter extends CustomPainter {
     required this.settings,
     required this.extrema,
     required this.showOverlay,
+    required this.temperatureUnit,
   });
 
   final ui.Image image;
@@ -216,6 +224,7 @@ class _ThermalImagePainter extends CustomPainter {
   final RenderSettings settings;
   final _Extrema extrema;
   final bool showOverlay;
+  final TemperatureUnit temperatureUnit;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -239,7 +248,7 @@ class _ThermalImagePainter extends CustomPainter {
       canvas,
       extrema.maxX * scaleX + scaleX / 2,
       extrema.maxY * scaleY + scaleY / 2,
-      '${extrema.max.toStringAsFixed(1)} C',
+      temperatureUnit.format(extrema.max),
       const Color(0xffff5252),
       size,
     );
@@ -247,7 +256,7 @@ class _ThermalImagePainter extends CustomPainter {
       canvas,
       extrema.minX * scaleX + scaleX / 2,
       extrema.minY * scaleY + scaleY / 2,
-      '${extrema.min.toStringAsFixed(1)} C',
+      temperatureUnit.format(extrema.min),
       const Color(0xff60a5fa),
       size,
     );
@@ -274,9 +283,9 @@ class _ThermalImagePainter extends CustomPainter {
 
   void _drawStats(Canvas canvas, Size size, _Extrema extrema) {
     final lines = [
-      'MAX ${extrema.max.toStringAsFixed(1)} C',
-      'MIN ${extrema.min.toStringAsFixed(1)} C',
-      'AVG ${extrema.avg.toStringAsFixed(1)} C',
+      'MAX ${temperatureUnit.format(extrema.max)}',
+      'MIN ${temperatureUnit.format(extrema.min)}',
+      'AVG ${temperatureUnit.format(extrema.avg)}',
     ];
     var y = 8.0;
     for (final line in lines) {
@@ -339,7 +348,8 @@ class _ThermalImagePainter extends CustomPainter {
     return oldDelegate.image != image ||
         oldDelegate.settings != settings ||
         oldDelegate.extrema != extrema ||
-        oldDelegate.showOverlay != showOverlay;
+        oldDelegate.showOverlay != showOverlay ||
+        oldDelegate.temperatureUnit != temperatureUnit;
   }
 }
 

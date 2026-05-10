@@ -51,6 +51,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get theme => '主题';
 
   @override
+  String get temperatureUnit => '温度单位';
+
+  @override
+  String get temperatureUnitCelsius => '摄氏度 (°C)';
+
+  @override
+  String get temperatureUnitFahrenheit => '华氏度 (°F)';
+
+  @override
+  String get temperatureUnitKelvin => '开尔文 (K)';
+
+  @override
   String get systemLanguage => '跟随系统';
 
   @override

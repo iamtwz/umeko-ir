@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'posthog_service.dart';
 import 'sentry_service.dart';
+import '../core/temperature_unit.dart';
 
 const appTrackingEnabledPreferenceKey = 'app.trackingEnabled';
 const autoUpdateCheckEnabledPreferenceKey = 'app.autoUpdateCheckEnabled';
@@ -60,6 +61,7 @@ class AppSettingsState {
   const AppSettingsState({
     this.language = AppLanguage.system,
     this.theme = AppThemePreference.system,
+    this.temperatureUnit = TemperatureUnit.celsius,
     this.appTrackingEnabled = true,
     this.autoUpdateCheckEnabled = true,
     this.loaded = false,
@@ -67,6 +69,7 @@ class AppSettingsState {
 
   final AppLanguage language;
   final AppThemePreference theme;
+  final TemperatureUnit temperatureUnit;
   final bool appTrackingEnabled;
   final bool autoUpdateCheckEnabled;
   final bool loaded;
@@ -77,6 +80,7 @@ class AppSettingsState {
   AppSettingsState copyWith({
     AppLanguage? language,
     AppThemePreference? theme,
+    TemperatureUnit? temperatureUnit,
     bool? appTrackingEnabled,
     bool? autoUpdateCheckEnabled,
     bool? loaded,
@@ -84,6 +88,7 @@ class AppSettingsState {
     return AppSettingsState(
       language: language ?? this.language,
       theme: theme ?? this.theme,
+      temperatureUnit: temperatureUnit ?? this.temperatureUnit,
       appTrackingEnabled: appTrackingEnabled ?? this.appTrackingEnabled,
       autoUpdateCheckEnabled:
           autoUpdateCheckEnabled ?? this.autoUpdateCheckEnabled,
@@ -95,6 +100,7 @@ class AppSettingsState {
 class AppSettingsController extends Notifier<AppSettingsState> {
   static const _languageKey = 'app.language';
   static const _themeKey = 'app.theme';
+  static const _temperatureUnitKey = 'app.temperatureUnit';
   final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
 
   @override
@@ -123,6 +129,11 @@ class AppSettingsController extends Notifier<AppSettingsState> {
     }
   }
 
+  Future<void> setTemperatureUnit(TemperatureUnit unit) async {
+    state = state.copyWith(temperatureUnit: unit);
+    await _preferences.setString(_temperatureUnitKey, unit.code);
+  }
+
   Future<void> setAppTrackingEnabled(bool enabled) async {
     state = state.copyWith(appTrackingEnabled: enabled);
     await _preferences.setBool(appTrackingEnabledPreferenceKey, enabled);
@@ -138,6 +149,9 @@ class AppSettingsController extends Notifier<AppSettingsState> {
   Future<void> _load() async {
     final code = await _preferences.getString(_languageKey);
     final themeCode = await _preferences.getString(_themeKey);
+    final temperatureUnitCode = await _preferences.getString(
+      _temperatureUnitKey,
+    );
     final appTrackingEnabled =
         await _preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
     final autoUpdateCheckEnabled =
@@ -145,6 +159,7 @@ class AppSettingsController extends Notifier<AppSettingsState> {
     state = state.copyWith(
       language: AppLanguage.fromCode(code),
       theme: AppThemePreference.fromCode(themeCode),
+      temperatureUnit: TemperatureUnit.fromCode(temperatureUnitCode),
       appTrackingEnabled: appTrackingEnabled,
       autoUpdateCheckEnabled: autoUpdateCheckEnabled,
       loaded: true,

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../core/temperature_series.dart';
+import '../core/temperature_unit.dart';
 import '../core/thermal_points.dart';
 import '../l10n/app_localizations.dart';
 
@@ -12,11 +13,13 @@ class TemperatureCurveChart extends StatelessWidget {
     super.key,
     required this.series,
     required this.points,
+    required this.temperatureUnit,
     this.cursor,
   });
 
   final Map<String, List<TemperatureSample>> series;
   final List<ThermalPoint> points;
+  final TemperatureUnit temperatureUnit;
   final Duration? cursor;
 
   @override
@@ -35,7 +38,7 @@ class TemperatureCurveChart extends StatelessWidget {
               for (final sample in series[point.id]!)
                 FlSpot(
                   sample.elapsed.inMilliseconds / 1000 - firstElapsed,
-                  sample.temperature,
+                  temperatureUnit.convertFromCelsius(sample.temperature),
                 ),
             ],
             isCurved: true,
@@ -78,7 +81,7 @@ class TemperatureCurveChart extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 52,
+              reservedSize: 64,
               interval: bounds.yInterval,
               getTitlesWidget: (value, meta) => SideTitleWidget(
                 meta: meta,
@@ -94,7 +97,7 @@ class TemperatureCurveChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 34,
+              reservedSize: 42,
               interval: bounds.xInterval,
               getTitlesWidget: (value, meta) => SideTitleWidget(
                 meta: meta,
@@ -131,7 +134,7 @@ class TemperatureCurveChart extends StatelessWidget {
             getTooltipItems: (spots) => [
               for (final spot in spots)
                 LineTooltipItem(
-                  '${_formatElapsed(spot.x)}  ${spot.y.toStringAsFixed(1)}C',
+                  '${_formatElapsed(spot.x)}  ${_formatTemperatureValue(spot.y)}',
                   TextStyle(
                     color: spot.bar.color ?? colorScheme.primary,
                     fontWeight: FontWeight.w700,
@@ -150,6 +153,13 @@ class TemperatureCurveChart extends StatelessWidget {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final secs = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$secs';
+  }
+
+  String _formatTemperatureValue(double convertedValue) {
+    final value = convertedValue.toStringAsFixed(1);
+    return temperatureUnit == TemperatureUnit.kelvin
+        ? '$value K'
+        : '$value °${temperatureUnit.csvSuffix}';
   }
 
   double _firstElapsedSeconds(

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
 import '../core/temperature_series.dart';
+import '../core/temperature_unit.dart';
 import '../core/thermal_frame.dart';
 import '../core/thermal_points.dart';
 import '../core/thermal_rendering.dart';
@@ -39,14 +40,21 @@ class ThermalExporter {
     );
   }
 
-  Future<void> shareCsv(GalleryEntry entry) async {
+  Future<void> shareCsv(
+    GalleryEntry entry, [
+    TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
+  ]) async {
     final bytes = await repository.readBytes(entry.id);
     final document = const UirReader().read(bytes);
     final points = thermalPointsFromMetadata(document.metadata);
     if (points.isEmpty) {
       throw const ThermalExportException('No measurement points to export.');
     }
-    final csv = temperatureSeriesCsv(frames: document.frames, points: points);
+    final csv = temperatureSeriesCsv(
+      frames: document.frames,
+      points: points,
+      temperatureUnit: temperatureUnit,
+    );
     await _saveFile(
       suggestedName: '${_safeName(entry.name)}.csv',
       bytes: Uint8List.fromList(csv.codeUnits),
@@ -73,6 +81,7 @@ class ThermalExporter {
   Future<void> sharePng(
     GalleryEntry entry,
     RenderSettings settings, {
+    TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
   }) async {
@@ -89,6 +98,7 @@ class ThermalExporter {
       points: points,
       includePoints: includePoints,
       includeLegend: includeLegend,
+      temperatureUnit: temperatureUnit,
       exportScale: _pngExportScale,
     );
     await _saveFile(
@@ -106,6 +116,7 @@ class ThermalExporter {
   Future<void> shareApng(
     GalleryEntry entry,
     RenderSettings settings, {
+    TemperatureUnit temperatureUnit = TemperatureUnit.celsius,
     bool includePoints = true,
     bool includeLegend = true,
   }) async {
@@ -124,6 +135,7 @@ class ThermalExporter {
         points: points,
         includePoints: includePoints,
         includeLegend: includeLegend,
+        temperatureUnit: temperatureUnit,
         exportScale: _apngExportScale,
       );
       final frameImage = img.decodePng(png);
@@ -158,6 +170,7 @@ class ThermalExporter {
     required List<ThermalPoint> points,
     required bool includePoints,
     required bool includeLegend,
+    required TemperatureUnit temperatureUnit,
     required int exportScale,
   }) async {
     final raster = renderThermalRaster(
@@ -178,6 +191,7 @@ class ThermalExporter {
       frameWidth: frame.width,
       frameHeight: frame.height,
       settings: settings,
+      temperatureUnit: temperatureUnit,
       exportScale: exportScale,
     );
   }
@@ -191,6 +205,7 @@ class ThermalExporter {
     required int frameWidth,
     required int frameHeight,
     required RenderSettings settings,
+    required TemperatureUnit temperatureUnit,
     required int exportScale,
   }) async {
     final image = await _decodeRasterImage(raster);
@@ -211,7 +226,7 @@ class ThermalExporter {
       settings,
     );
     if (includeLegend) {
-      _drawStats(canvas, size, extrema, styleScale);
+      _drawStats(canvas, size, extrema, temperatureUnit, styleScale);
       _drawExtremaAnchors(
         canvas,
         size,
@@ -219,6 +234,7 @@ class ThermalExporter {
         frameWidth: frameWidth,
         frameHeight: frameHeight,
         settings: settings,
+        temperatureUnit: temperatureUnit,
         styleScale: styleScale,
       );
     }
@@ -238,7 +254,7 @@ class ThermalExporter {
           canvas,
           size,
           center,
-          '${point.label} ${sampleThermalPoint(frame, point).toStringAsFixed(1)} C',
+          '${point.label} ${temperatureUnit.format(sampleThermalPoint(frame, point))}',
           point.color,
           styleScale,
           radius: 8,
@@ -274,14 +290,15 @@ class ThermalExporter {
     Canvas canvas,
     Size size,
     _ExportExtrema extrema,
+    TemperatureUnit temperatureUnit,
     double styleScale,
   ) {
     final x = 8.0 * styleScale;
     var y = 8.0 * styleScale;
     for (final line in [
-      'MAX ${extrema.max.toStringAsFixed(1)} C',
-      'MIN ${extrema.min.toStringAsFixed(1)} C',
-      'AVG ${extrema.avg.toStringAsFixed(1)} C',
+      'MAX ${temperatureUnit.format(extrema.max)}',
+      'MIN ${temperatureUnit.format(extrema.min)}',
+      'AVG ${temperatureUnit.format(extrema.avg)}',
     ]) {
       final textPainter = _textPainter(line, Colors.white, 12 * styleScale);
       final rect = Rect.fromLTWH(
@@ -306,6 +323,7 @@ class ThermalExporter {
     required int frameWidth,
     required int frameHeight,
     required RenderSettings settings,
+    required TemperatureUnit temperatureUnit,
     required double styleScale,
   }) {
     final oriented = displayOrientedSize(
@@ -322,7 +340,7 @@ class ThermalExporter {
         extrema.maxX * scaleX + scaleX / 2,
         extrema.maxY * scaleY + scaleY / 2,
       ),
-      '${extrema.max.toStringAsFixed(1)} C',
+      temperatureUnit.format(extrema.max),
       const Color(0xffff5252),
       styleScale,
       radius: 7,
@@ -335,7 +353,7 @@ class ThermalExporter {
         extrema.minX * scaleX + scaleX / 2,
         extrema.minY * scaleY + scaleY / 2,
       ),
-      '${extrema.min.toStringAsFixed(1)} C',
+      temperatureUnit.format(extrema.min),
       const Color(0xff60a5fa),
       styleScale,
       radius: 7,

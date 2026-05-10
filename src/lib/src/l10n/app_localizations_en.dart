@@ -51,6 +51,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get theme => 'Theme';
 
   @override
+  String get temperatureUnit => 'Temperature Unit';
+
+  @override
+  String get temperatureUnitCelsius => 'Celsius (°C)';
+
+  @override
+  String get temperatureUnitFahrenheit => 'Fahrenheit (°F)';
+
+  @override
+  String get temperatureUnitKelvin => 'Kelvin (K)';
+
+  @override
   String get systemLanguage => 'System';
 
   @override

@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import '../core/thermal_frame.dart';
 import '../core/thermal_points.dart';
 import '../core/thermal_rendering.dart';
+import '../core/temperature_unit.dart';
 
 class ThermalPointsOverlay extends StatefulWidget {
   const ThermalPointsOverlay({
     super.key,
     required this.frame,
     required this.settings,
+    required this.temperatureUnit,
     required this.points,
     this.onPointAdded,
     this.onPointMoved,
@@ -19,6 +21,7 @@ class ThermalPointsOverlay extends StatefulWidget {
 
   final ThermalFrame frame;
   final RenderSettings settings;
+  final TemperatureUnit temperatureUnit;
   final List<ThermalPoint> points;
   final void Function(double xNorm, double yNorm)? onPointAdded;
   final void Function(String id, double xNorm, double yNorm)? onPointMoved;
@@ -44,6 +47,7 @@ class _ThermalPointsOverlayState extends State<ThermalPointsOverlay> {
         painter: _ThermalPointsPainter(
           frame: widget.frame,
           settings: widget.settings,
+          temperatureUnit: widget.temperatureUnit,
           points: widget.points,
         ),
       ),
@@ -128,11 +132,13 @@ class _ThermalPointsPainter extends CustomPainter {
   const _ThermalPointsPainter({
     required this.frame,
     required this.settings,
+    required this.temperatureUnit,
     required this.points,
   });
 
   final ThermalFrame frame;
   final RenderSettings settings;
+  final TemperatureUnit temperatureUnit;
   final List<ThermalPoint> points;
 
   @override
@@ -165,7 +171,7 @@ class _ThermalPointsPainter extends CustomPainter {
     canvas.drawLine(center.translate(-12, 0), center.translate(12, 0), paint);
     canvas.drawLine(center.translate(0, -12), center.translate(0, 12), paint);
 
-    final label = '${point.label} ${temperature.toStringAsFixed(1)} C';
+    final label = '${point.label} ${temperatureUnit.format(temperature)}';
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,
@@ -202,6 +208,7 @@ class _ThermalPointsPainter extends CustomPainter {
   bool shouldRepaint(covariant _ThermalPointsPainter oldDelegate) {
     return oldDelegate.frame != frame ||
         oldDelegate.settings != settings ||
+        oldDelegate.temperatureUnit != temperatureUnit ||
         oldDelegate.points != points;
   }
 }

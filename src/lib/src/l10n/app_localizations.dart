@@ -184,6 +184,30 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get theme;
 
+  /// No description provided for @temperatureUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature Unit'**
+  String get temperatureUnit;
+
+  /// No description provided for @temperatureUnitCelsius.
+  ///
+  /// In en, this message translates to:
+  /// **'Celsius (°C)'**
+  String get temperatureUnitCelsius;
+
+  /// No description provided for @temperatureUnitFahrenheit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fahrenheit (°F)'**
+  String get temperatureUnitFahrenheit;
+
+  /// No description provided for @temperatureUnitKelvin.
+  ///
+  /// In en, this message translates to:
+  /// **'Kelvin (K)'**
+  String get temperatureUnitKelvin;
+
   /// No description provided for @systemLanguage.
   ///
   /// In en, this message translates to:

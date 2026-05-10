@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:umeko_ir_flutter/src/core/temperature_series.dart';
+import 'package:umeko_ir_flutter/src/core/temperature_unit.dart';
 import 'package:umeko_ir_flutter/src/core/thermal_frame.dart';
 import 'package:umeko_ir_flutter/src/core/thermal_points.dart';
 import 'package:umeko_ir_flutter/src/core/uir_format.dart';
@@ -70,6 +71,26 @@ void main() {
 
     expect(csv, contains('elapsed_ms,point_id'));
     expect(csv, contains('120,p1,P1,0.250000,0.500000,23.45'));
+  });
+
+  test('exports temperature CSV using selected unit', () {
+    final document = _document();
+    const point = ThermalPoint(
+      id: 'p1',
+      xNorm: 0,
+      yNorm: 0,
+      label: 'P1',
+      colorArgb: 0xffffffff,
+    );
+
+    final csv = temperatureSeriesCsv(
+      frames: document.frames,
+      points: const [point],
+      temperatureUnit: TemperatureUnit.fahrenheit,
+    );
+
+    expect(csv, contains('temperature_f'));
+    expect(csv, contains(',69.80'));
   });
 }
 

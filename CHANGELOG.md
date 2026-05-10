@@ -53,6 +53,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Added APNG export for local video recordings, simplified local file export
   menus, and aligned Gallery card metadata between device and local files.
 - Replaced Gallery card file-size metadata with temperature ranges.
+- Added a temperature unit setting for Celsius, Fahrenheit, and Kelvin across
+  previews, charts, exports, and Gallery metadata.
 - Updated desktop and web default titles from the generated Flutter project name
   to `Umeko IR`.
 
