@@ -1863,11 +1863,13 @@ Future<void> _shareApngWithProgress(
       shouldCancel: () => cancelRequested,
       onProgress: (event) {
         showProgressDialog();
+        final localizedPhase = _localizeApngProgressText(event.phase, l10n);
+        final localizedMessage = _localizeApngProgressText(event.message, l10n);
         updateDialog?.call(() {
           progress = event.value.clamp(0.0, 1.0);
-          phase = event.phase;
-          message = event.message;
-          addLog('${event.phase}: ${event.message}');
+          phase = localizedPhase;
+          message = localizedMessage;
+          addLog('$localizedPhase: $localizedMessage');
         });
       },
       labels: labels,
@@ -1927,6 +1929,24 @@ ThermalApngExportLabels _apngExportLabels(AppLocalizations l10n) {
     writingApngFile: l10n.exportMessageWritingApngFile,
     apngFileSaved: l10n.exportMessageApngFileSaved,
   );
+}
+
+String _localizeApngProgressText(String value, AppLocalizations l10n) {
+  return switch (value) {
+    'Preparing' => l10n.exportPhasePreparing,
+    'Preparing text' => l10n.exportPhasePreparingText,
+    'Rendering frames' => l10n.exportPhaseRenderingFrames,
+    'Encoding APNG' => l10n.exportPhaseEncodingApng,
+    'Saving' => l10n.exportPhaseSaving,
+    'Complete' => l10n.exportPhaseComplete,
+    'Reading UIR file' => l10n.exportMessageReadingUirFile,
+    'Compressing animated PNG frames' =>
+      l10n.exportMessageCompressingAnimatedPngFrames,
+    'APNG encoding complete' => l10n.exportMessageApngEncodingComplete,
+    'Writing APNG file' => l10n.exportMessageWritingApngFile,
+    'APNG file saved' => l10n.exportMessageApngFileSaved,
+    _ => value,
+  };
 }
 
 String _countTemplate(String Function(Object count) formatter) {

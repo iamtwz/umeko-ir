@@ -123,7 +123,7 @@ class ThermalExporter {
     int exportScale = 32,
     void Function(ThermalExportProgress progress)? onProgress,
     bool Function()? shouldCancel,
-    ThermalApngExportLabels labels = const ThermalApngExportLabels(),
+    required ThermalApngExportLabels labels,
   }) async {
     throw const ThermalExportException(
       'Export sharing is not implemented on this platform yet.',

@@ -248,7 +248,7 @@ class ThermalExporter {
     int exportScale = _defaultExportScale,
     void Function(ThermalExportProgress progress)? onProgress,
     bool Function()? shouldCancel,
-    ThermalApngExportLabels labels = const ThermalApngExportLabels(),
+    required ThermalApngExportLabels labels,
   }) async {
     final location = await getSaveLocation(
       acceptedTypeGroups: const [
