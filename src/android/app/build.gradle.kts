@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -15,6 +17,38 @@ val hasReleaseSigning =
         !releaseKeyAlias.isNullOrBlank() &&
         !releaseKeyPassword.isNullOrBlank()
 
+fun dartDefineValue(name: String): String? {
+    val encodedDefinitions = project.findProperty("dart-defines")?.toString()
+    if (encodedDefinitions.isNullOrBlank()) return null
+
+    return encodedDefinitions.split(",")
+        .mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+            }.getOrNull()
+        }
+        .firstNotNullOfOrNull { definition ->
+            val separatorIndex = definition.indexOf("=")
+            if (separatorIndex <= 0) {
+                null
+            } else {
+                val key = definition.substring(0, separatorIndex)
+                val value = definition.substring(separatorIndex + 1)
+                if (key == name) value else null
+            }
+        }
+}
+
+val buildChannel = (
+    project.findProperty("UMEKO_BUILD_CHANNEL")?.toString()
+        ?: dartDefineValue("UMEKO_BUILD_CHANNEL")
+        ?: "release"
+).lowercase()
+val isDevBuild = buildChannel == "dev"
+val appDisplayName = if (isDevBuild) "Umeko IR Dev" else "Umeko IR"
+val applicationIdBase = "com.example.umeko_ir_flutter"
+val canUseReleaseSigning = hasReleaseSigning && !isDevBuild
+
 android {
     namespace = "com.example.umeko_ir_flutter"
     compileSdk = flutter.compileSdkVersion
@@ -30,20 +64,20 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.umeko_ir_flutter"
+        applicationId = if (isDevBuild) "$applicationIdBase.dev" else applicationIdBase
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionName = if (isDevBuild) "${flutter.versionName}-dev" else flutter.versionName
+        manifestPlaceholders["appLabel"] = appDisplayName
     }
 
-    signingConfigs {
-        create("release") {
-            if (hasReleaseSigning) {
-                storeFile = file(releaseStoreFile)
+    if (canUseReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
@@ -54,7 +88,7 @@ android {
     buildTypes {
         release {
             signingConfig =
-                if (hasReleaseSigning) {
+                if (canUseReleaseSigning) {
                     signingConfigs.getByName("release")
                 } else {
                     signingConfigs.getByName("debug")

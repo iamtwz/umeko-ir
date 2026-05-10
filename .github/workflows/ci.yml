@@ -38,19 +38,15 @@ jobs:
         include:
           - target: web
             os: ubuntu-latest
-            command: flutter build web --release
             package_suffix: web.tar.gz
           - target: macos
             os: macos-latest
-            command: flutter build macos --release
             package_suffix: macos.zip
           - target: linux
             os: ubuntu-latest
-            command: flutter build linux --release
             package_suffix: linux-x64.tar.gz
           - target: windows
             os: windows-2022
-            command: flutter build windows --release
             package_suffix: windows-x64.zip
     runs-on: ${{ matrix.os }}
     defaults:
@@ -86,7 +82,52 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: ${{ matrix.command }}
+      - name: Resolve build channel
+        id: build-channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "channel=release" >> "$GITHUB_OUTPUT"
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=dev" >> "$GITHUB_OUTPUT"
+            echo "suffix=-dev" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart_define="--dart-define=UMEKO_BUILD_CHANNEL=${{ steps.build-channel.outputs.channel }}"
+          case "${{ matrix.target }}" in
+            macos)
+              flutter build macos --release "$dart_define"
+              if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
+                plutil -replace CFBundleDisplayName -string "Umeko IR Dev" "build/macos/Build/Products/Release/Umeko IR.app/Contents/Info.plist"
+                plutil -replace CFBundleName -string "Umeko IR Dev" "build/macos/Build/Products/Release/Umeko IR.app/Contents/Info.plist"
+                mv "build/macos/Build/Products/Release/Umeko IR.app" "build/macos/Build/Products/Release/Umeko IR Dev.app"
+              fi
+              ;;
+            linux)
+              if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
+                sed -i 's/"Umeko IR"/"Umeko IR Dev"/g' linux/runner/my_application.cc
+              fi
+              flutter build linux --release "$dart_define"
+              ;;
+            windows)
+              if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
+                sed -i 's/L"Umeko IR"/L"Umeko IR Dev"/g' windows/runner/main.cpp
+              fi
+              flutter build windows --release "$dart_define"
+              ;;
+            web)
+              flutter build web --release "$dart_define"
+              if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
+                sed -i 's/>Umeko IR</>Umeko IR Dev</g; s/content="Umeko IR"/content="Umeko IR Dev"/g' build/web/index.html
+                sed -i 's/"name": "Umeko IR"/"name": "Umeko IR Dev"/; s/"short_name": "Umeko IR"/"short_name": "Umeko IR Dev"/' build/web/manifest.json
+              fi
+              ;;
+          esac
       - name: Resolve package version
         id: package-version
         shell: bash
@@ -99,13 +140,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ../dist
-          package="../dist/umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}"
+          package="../dist/umeko-ir-${{ steps.package-version.outputs.version }}${{ steps.build-channel.outputs.suffix }}-${{ matrix.package_suffix }}"
           case "${{ matrix.target }}" in
-            android)
-              cp build/app/outputs/flutter-apk/app-release.apk "$package"
-              ;;
             macos)
-              ditto -c -k --keepParent "build/macos/Build/Products/Release/Umeko IR.app" "$package"
+              app_name="Umeko IR.app"
+              if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
+                app_name="Umeko IR Dev.app"
+              fi
+              ditto -c -k --keepParent "build/macos/Build/Products/Release/$app_name" "$package"
               ;;
             linux)
               tar -czf "$package" -C build/linux/x64/release bundle
@@ -119,8 +161,8 @@ jobs:
           esac
       - uses: actions/upload-artifact@v7
         with:
-          name: umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}
-          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-${{ matrix.package_suffix }}
+          name: umeko-ir-${{ steps.package-version.outputs.version }}${{ steps.build-channel.outputs.suffix }}-${{ matrix.package_suffix }}
+          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}${{ steps.build-channel.outputs.suffix }}-${{ matrix.package_suffix }}
 
   build-android:
     name: Build android
@@ -141,7 +183,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release
+      - run: flutter build apk --release --dart-define=UMEKO_BUILD_CHANNEL=dev
       - name: Resolve package version
         id: package-version
         shell: bash
@@ -155,11 +197,11 @@ jobs:
           set -euo pipefail
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk \
-            "../dist/umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk"
+            "../dist/umeko-ir-${{ steps.package-version.outputs.version }}-dev-android-universal.apk"
       - uses: actions/upload-artifact@v7
         with:
-          name: umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk
-          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-android-universal.apk
+          name: umeko-ir-${{ steps.package-version.outputs.version }}-dev-android-universal.apk
+          path: dist/umeko-ir-${{ steps.package-version.outputs.version }}-dev-android-universal.apk
 
   build-android-release:
     name: Build signed android
@@ -185,22 +227,22 @@ jobs:
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_KEY_ALIAS"
-          test -n "$ANDROID_KEY_PASSWORD"
           keystore_path="$RUNNER_TEMP/umeko-ir-upload.jks"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
           echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
-      - run: flutter build apk --release
+      - run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          flutter build apk --release --dart-define=UMEKO_BUILD_CHANNEL=release
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       - name: Resolve package version
         id: package-version
         shell: bash

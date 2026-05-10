@@ -45,7 +45,10 @@ class ThermalParser {
     _stats = _stats.copyWith(
       bytesReceived: _stats.bytesReceived + chunk.length,
     );
-    _buffer = Uint8List.fromList([..._buffer, ...chunk]);
+    final nextBuffer = Uint8List(_buffer.length + chunk.length);
+    nextBuffer.setAll(0, _buffer);
+    nextBuffer.setAll(_buffer.length, chunk);
+    _buffer = nextBuffer;
 
     final frames = <ThermalFrame>[];
 

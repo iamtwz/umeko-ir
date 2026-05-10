@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'src/application/app_settings_controller.dart';
+import 'src/application/build_channel.dart';
 import 'src/application/posthog_service.dart';
 import 'src/application/sentry_service.dart';
 import 'src/application/thermal_controller.dart';
@@ -47,7 +48,7 @@ class UmekoIrApp extends ConsumerWidget {
       if (settings.appTrackingEnabled && isPostHogConfigured) PosthogObserver(),
     ];
     return MaterialApp(
-      onGenerateTitle: (context) => context.l10n.appTitle,
+      onGenerateTitle: (context) => appDisplayName(context.l10n.appTitle),
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -108,25 +109,20 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(thermalControllerProvider);
-    final settings = ref.watch(appSettingsProvider);
+    ref.listen<AppSettingsState>(appSettingsProvider, (_, settings) {
+      _maybeStartUpdateCheck(settings);
+    });
+    final error = ref.watch(
+      thermalControllerProvider.select((state) => state.error),
+    );
     final controller = ref.read(thermalControllerProvider.notifier);
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final l10n = context.l10n;
 
-    if (settings.loaded &&
-        settings.autoUpdateCheckEnabled &&
-        !_updateCheckStarted) {
-      _updateCheckStarted = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_checkForUpdates());
-      });
-    }
-
     final content = switch (_index) {
-      0 => LivePane(state: state, controller: controller),
-      1 => GalleryPane(state: state, controller: controller),
-      2 => DebugPane(state: state, controller: controller),
+      0 => const LivePane(),
+      1 => const GalleryPane(),
+      2 => const DebugPane(),
       _ => const AppSettingsPane(),
     };
 
@@ -172,12 +168,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             Expanded(
               child: Column(
                 children: [
-                  TopBar(state: state, controller: controller),
-                  if (state.error != null)
-                    ErrorStrip(
-                      message: state.error!,
-                      onClose: controller.clearError,
-                    ),
+                  const TopBar(),
+                  if (error != null)
+                    ErrorStrip(message: error, onClose: controller.clearError),
                   Expanded(child: content),
                 ],
               ),
@@ -216,6 +209,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 
+  void _maybeStartUpdateCheck(AppSettingsState settings) {
+    if (!settings.loaded ||
+        !settings.autoUpdateCheckEnabled ||
+        _updateCheckStarted) {
+      return;
+    }
+    _updateCheckStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_checkForUpdates());
+    });
+  }
+
   Future<void> _checkForUpdates() async {
     try {
       final packageInfo = await ref.read(packageInfoProvider.future);
@@ -249,14 +254,15 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-class TopBar extends StatelessWidget {
-  const TopBar({super.key, required this.state, required this.controller});
-
-  final ThermalState state;
-  final ThermalController controller;
+class TopBar extends ConsumerWidget {
+  const TopBar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(
+      thermalControllerProvider.select(_TopBarSnapshot.fromState),
+    );
+    final controller = ref.read(thermalControllerProvider.notifier);
     final compact = MediaQuery.sizeOf(context).width < 980;
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
@@ -273,23 +279,23 @@ class TopBar extends StatelessWidget {
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  HeaderRow(state: state, controller: controller),
-                  if (_showPortPicker) ...[
+                  _HeaderRow(state: state, controller: controller),
+                  if (_showPortPicker(state)) ...[
                     const SizedBox(height: 10),
-                    PortPicker(state: state, controller: controller),
+                    _PortPicker(state: state, controller: controller),
                   ],
                 ],
               )
             : Row(
                 children: [
                   Expanded(
-                    child: HeaderRow(state: state, controller: controller),
+                    child: _HeaderRow(state: state, controller: controller),
                   ),
-                  if (_showPortPicker) ...[
+                  if (_showPortPicker(state)) ...[
                     const SizedBox(width: 16),
                     SizedBox(
                       width: 360,
-                      child: PortPicker(state: state, controller: controller),
+                      child: _PortPicker(state: state, controller: controller),
                     ),
                   ],
                 ],
@@ -298,15 +304,56 @@ class TopBar extends StatelessWidget {
     );
   }
 
-  bool get _showPortPicker {
+  bool _showPortPicker(_TopBarSnapshot state) {
     return !kIsWeb || state.ports.any((port) => !port.virtual);
   }
 }
 
-class HeaderRow extends StatelessWidget {
-  const HeaderRow({super.key, required this.state, required this.controller});
+class _TopBarSnapshot {
+  const _TopBarSnapshot({
+    required this.ports,
+    required this.selectedPort,
+    required this.connected,
+    required this.streaming,
+    required this.busy,
+  });
 
-  final ThermalState state;
+  factory _TopBarSnapshot.fromState(ThermalState state) {
+    return _TopBarSnapshot(
+      ports: state.ports,
+      selectedPort: state.selectedPort,
+      connected: state.connected,
+      streaming: state.streaming,
+      busy: state.busy,
+    );
+  }
+
+  final List<SerialPortDescriptor> ports;
+  final SerialPortDescriptor? selectedPort;
+  final bool connected;
+  final bool streaming;
+  final bool busy;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _TopBarSnapshot &&
+        other.ports == ports &&
+        other.selectedPort == selectedPort &&
+        other.connected == connected &&
+        other.streaming == streaming &&
+        other.busy == busy;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(ports, selectedPort, connected, streaming, busy);
+  }
+}
+
+class _HeaderRow extends StatelessWidget {
+  const _HeaderRow({required this.state, required this.controller});
+
+  final _TopBarSnapshot state;
   final ThermalController controller;
 
   @override
@@ -385,10 +432,10 @@ class HeaderRow extends StatelessWidget {
   }
 }
 
-class PortPicker extends StatelessWidget {
-  const PortPicker({super.key, required this.state, required this.controller});
+class _PortPicker extends StatelessWidget {
+  const _PortPicker({required this.state, required this.controller});
 
-  final ThermalState state;
+  final _TopBarSnapshot state;
   final ThermalController controller;
 
   @override
@@ -546,14 +593,13 @@ class ErrorStrip extends StatelessWidget {
   }
 }
 
-class LivePane extends StatelessWidget {
-  const LivePane({super.key, required this.state, required this.controller});
-
-  final ThermalState state;
-  final ThermalController controller;
+class LivePane extends ConsumerWidget {
+  const LivePane({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(thermalControllerProvider);
+    final controller = ref.read(thermalControllerProvider.notifier);
     final wide = MediaQuery.sizeOf(context).width >= 980;
     final viewer = ThermalViewerCard(state: state);
     final controls = ControlPanel(state: state, controller: controller);
@@ -630,14 +676,13 @@ class ThermalViewerCard extends StatelessWidget {
   }
 }
 
-class GalleryPane extends StatelessWidget {
-  const GalleryPane({super.key, required this.state, required this.controller});
-
-  final ThermalState state;
-  final ThermalController controller;
+class GalleryPane extends ConsumerWidget {
+  const GalleryPane({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(thermalControllerProvider);
+    final controller = ref.read(thermalControllerProvider.notifier);
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
@@ -725,6 +770,11 @@ class GalleryTile extends ConsumerWidget {
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
+    final canDelete = ref.watch(
+      thermalControllerProvider.select(
+        (state) => state.connected && !state.busy,
+      ),
+    );
     final controller = ref.read(thermalControllerProvider.notifier);
     final l10n = context.l10n;
     return Card(
@@ -807,7 +857,9 @@ class GalleryTile extends ConsumerWidget {
               trailing: IconButton(
                 tooltip: l10n.delete,
                 icon: const Icon(Icons.delete_outline),
-                onPressed: () => controller.deletePhoto(photo.filename),
+                onPressed: canDelete
+                    ? () => controller.deletePhoto(photo.filename)
+                    : null,
               ),
             ),
           ],
@@ -1109,7 +1161,10 @@ class AppSettingsPane extends ConsumerWidget {
     final packageInfo = ref.watch(packageInfoProvider).asData?.value;
     final l10n = context.l10n;
     final version = packageInfo?.version ?? '';
-    final versionText = version.isEmpty ? null : l10n.version(version);
+    final displayVersion = appVersionLabel(version);
+    final versionText = displayVersion.isEmpty
+        ? null
+        : l10n.version(displayVersion);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -1195,8 +1250,8 @@ class AppSettingsPane extends ConsumerWidget {
                 ),
                 onTap: () => showAboutDialog(
                   context: context,
-                  applicationName: l10n.appTitle,
-                  applicationVersion: version,
+                  applicationName: appDisplayName(l10n.appTitle),
+                  applicationVersion: displayVersion,
                   applicationIcon: const Icon(
                     Icons.thermostat,
                     color: Color(0xfff97316),
@@ -1223,8 +1278,8 @@ class AppSettingsPane extends ConsumerWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => showLicensePage(
                   context: context,
-                  applicationName: l10n.appTitle,
-                  applicationVersion: version,
+                  applicationName: appDisplayName(l10n.appTitle),
+                  applicationVersion: displayVersion,
                   applicationIcon: const Icon(
                     Icons.thermostat,
                     color: Color(0xfff97316),
@@ -1240,14 +1295,13 @@ class AppSettingsPane extends ConsumerWidget {
   }
 }
 
-class DebugPane extends StatelessWidget {
-  const DebugPane({super.key, required this.state, required this.controller});
-
-  final ThermalState state;
-  final ThermalController controller;
+class DebugPane extends ConsumerWidget {
+  const DebugPane({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(thermalControllerProvider);
+    final controller = ref.read(thermalControllerProvider.notifier);
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(

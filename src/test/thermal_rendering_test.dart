@@ -53,4 +53,36 @@ void main() {
     expect(raster.rgba.length, 4 * 4 * 4);
     expect(raster.rgba[3], 255);
   });
+
+  test('render settings compare by value', () {
+    expect(
+      const RenderSettings(
+        colorMap: ThermalColorMap.rainbow,
+        filter: ThermalFilter.sobel,
+        rotation: 90,
+      ),
+      const RenderSettings(
+        colorMap: ThermalColorMap.rainbow,
+        filter: ThermalFilter.sobel,
+        rotation: 90,
+      ),
+    );
+  });
+
+  test('sobel filter uses luminance instead of red channel only', () {
+    final rgba = Uint8List(3 * 3 * 4);
+    for (var y = 0; y < 3; y++) {
+      for (var x = 0; x < 3; x++) {
+        final idx = (y * 3 + x) * 4;
+        rgba[idx] = 0;
+        rgba[idx + 1] = x * 100;
+        rgba[idx + 2] = 0;
+        rgba[idx + 3] = 255;
+      }
+    }
+
+    applyFilter(rgba, 3, 3, ThermalFilter.sobel);
+
+    expect(rgba[(1 * 3 + 1) * 4], greaterThan(0));
+  });
 }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -162,12 +161,36 @@ class LibSerialPortAdapter implements SerialAdapter {
     if (port == null || !port.isOpen) {
       throw StateError('Serial port is not open');
     }
-    final written = port.write(data, timeout: 1000);
+    late final int written;
+    try {
+      written = port.write(data, timeout: 1000);
+    } catch (e) {
+      throw StateError('Serial port write failed: ${_describeWriteError(e)}');
+    }
     if (written != data.length) {
+      final error = SerialPort.lastError;
       throw StateError(
-        'Only wrote $written/${data.length} bytes: ${utf8.decode(data, allowMalformed: true)}',
+        'Serial port write failed: ${_describeWriteError(error)} '
+        '(wrote $written/${data.length} bytes)',
       );
     }
+  }
+
+  String _describeWriteError(Object? error) {
+    if (error is OSError) {
+      final code = error.errorCode;
+      if (Platform.isWindows && code == 5) {
+        return 'Access denied (errno=5). Close other serial tools and reconnect the device.';
+      }
+      if (Platform.isWindows && code == 22) {
+        return 'Invalid serial port handle (errno=22). Reconnect the device and try again.';
+      }
+      final message = error.message.trim();
+      if (message.isNotEmpty) return '$message (errno=$code)';
+      return 'errno=$code';
+    }
+    if (error != null) return error.toString();
+    return 'native write returned an error';
   }
 
   @override

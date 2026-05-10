@@ -1,6 +1,7 @@
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
+import 'build_channel.dart';
 import 'tracking_identity.dart';
 
 const postHogProjectToken = String.fromEnvironment(
@@ -54,6 +55,7 @@ Future<void> configurePostHog({required bool enabled}) async {
       'app_version': packageInfo.version,
       'build_number': packageInfo.buildNumber,
       'package_name': packageInfo.packageName,
+      'build_channel': buildChannel.name,
       'release': release,
     },
     userPropertiesSetOnce: {'first_seen_release': release},
@@ -62,6 +64,7 @@ Future<void> configurePostHog({required bool enabled}) async {
   await Posthog().register('app_version', packageInfo.version);
   await Posthog().register('build_number', packageInfo.buildNumber);
   await Posthog().register('package_name', packageInfo.packageName);
+  await Posthog().register('build_channel', buildChannel.name);
   await Posthog().register('release', release);
 
   if (!_appOpenCaptured) {

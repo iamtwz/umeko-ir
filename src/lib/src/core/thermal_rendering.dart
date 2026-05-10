@@ -57,6 +57,33 @@ class RenderSettings {
       rangeMax: rangeMax ?? this.rangeMax,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is RenderSettings &&
+        other.colorMap == colorMap &&
+        other.filter == filter &&
+        other.upscaleEnabled == upscaleEnabled &&
+        other.rotation == rotation &&
+        other.hflip == hflip &&
+        other.vflip == vflip &&
+        other.rangeMin == rangeMin &&
+        other.rangeMax == rangeMax;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      colorMap,
+      filter,
+      upscaleEnabled,
+      rotation,
+      hflip,
+      vflip,
+      rangeMin,
+      rangeMax,
+    );
+  }
 }
 
 class RasterImage {
@@ -412,7 +439,10 @@ void _sobel(Uint8List src, Uint8List dst, int w, int h) {
         for (var kx = 0; kx < 3; kx++) {
           final sx = (x + kx - 1).clamp(0, w - 1);
           final sy = (y + ky - 1).clamp(0, h - 1);
-          final gray = src[(sy * w + sx) * 4];
+          final idx = (sy * w + sx) * 4;
+          final gray =
+              (0.299 * src[idx] + 0.587 * src[idx + 1] + 0.114 * src[idx + 2])
+                  .round();
           xr += gray * gx[ky * 3 + kx];
           yr += gray * gy[ky * 3 + kx];
         }

@@ -1,6 +1,6 @@
 {
-    "name": "umeko_ir_flutter",
-    "short_name": "umeko_ir_flutter",
+    "name": "Umeko IR",
+    "short_name": "Umeko IR",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",

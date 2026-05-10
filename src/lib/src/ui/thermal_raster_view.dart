@@ -1,6 +1,6 @@
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/thermal_frame.dart';
@@ -55,6 +55,7 @@ class ThermalRasterView extends StatefulWidget {
 class _ThermalRasterViewState extends State<ThermalRasterView> {
   ui.Image? _image;
   RasterImage? _raster;
+  _Extrema? _extrema;
   int _generation = 0;
 
   @override
@@ -77,9 +78,9 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
     }
   }
 
-  void _render() {
+  Future<void> _render() async {
     final generation = ++_generation;
-    final raster = renderThermalRaster(
+    final request = _RenderRequest(
       temperatures: widget.temperatures,
       width: widget.width,
       height: widget.height,
@@ -88,24 +89,44 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
       scale: widget.scale,
       settings: widget.settings,
     );
-    _raster = raster;
+    late final _RenderResult result;
+    try {
+      result = await compute(_renderThermalRasterInIsolate, request);
+    } catch (error, stackTrace) {
+      debugPrint('Thermal raster render failed: $error\n$stackTrace');
+      result = _renderThermalRasterInIsolate(request);
+    }
+    if (!mounted || generation != _generation) return;
+    _raster = result.raster;
+    _extrema = result.extrema;
     ui.decodeImageFromPixels(
-      raster.rgba,
-      raster.width,
-      raster.height,
+      result.raster.rgba,
+      result.raster.width,
+      result.raster.height,
       ui.PixelFormat.rgba8888,
       (image) {
         if (mounted && generation == _generation) {
+          final previous = _image;
           setState(() => _image = image);
+          previous?.dispose();
+        } else {
+          image.dispose();
         }
       },
     );
   }
 
   @override
+  void dispose() {
+    _image?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final image = _image;
     final raster = _raster;
+    final extrema = _extrema;
     final colorScheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
@@ -113,7 +134,7 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
         color: dark ? Colors.black : colorScheme.surfaceContainerHighest,
       ),
       child: Center(
-        child: image == null || raster == null
+        child: image == null || raster == null || extrema == null
             ? const SizedBox.square(
                 dimension: 48,
                 child: CircularProgressIndicator(),
@@ -126,12 +147,10 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
                   child: CustomPaint(
                     painter: _ThermalImagePainter(
                       image: image,
-                      temperatures: widget.temperatures,
                       sourceWidth: widget.width,
                       sourceHeight: widget.height,
                       settings: widget.settings,
-                      tMin: widget.tMin,
-                      tMax: widget.tMax,
+                      extrema: extrema,
                       showOverlay: widget.showOverlay,
                     ),
                   ),
@@ -145,22 +164,18 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
 class _ThermalImagePainter extends CustomPainter {
   const _ThermalImagePainter({
     required this.image,
-    required this.temperatures,
     required this.sourceWidth,
     required this.sourceHeight,
     required this.settings,
-    required this.tMin,
-    required this.tMax,
+    required this.extrema,
     required this.showOverlay,
   });
 
   final ui.Image image;
-  final Float32List temperatures;
   final int sourceWidth;
   final int sourceHeight;
   final RenderSettings settings;
-  final double tMin;
-  final double tMax;
+  final _Extrema extrema;
   final bool showOverlay;
 
   @override
@@ -174,7 +189,6 @@ class _ThermalImagePainter extends CustomPainter {
 
     if (!showOverlay) return;
 
-    final extrema = _findExtrema();
     final oriented = displayOrientedSize(
       sourceWidth,
       sourceHeight,
@@ -199,44 +213,6 @@ class _ThermalImagePainter extends CustomPainter {
       size,
     );
     _drawStats(canvas, size, extrema);
-  }
-
-  _Extrema _findExtrema() {
-    final oriented = orientForDisplay(
-      temperatures,
-      sourceWidth,
-      sourceHeight,
-      rotation: settings.rotation,
-      hflip: settings.hflip,
-      vflip: settings.vflip,
-    );
-    final size = orientedSize(sourceWidth, sourceHeight, settings.rotation);
-    var min = double.infinity;
-    var max = double.negativeInfinity;
-    var minIndex = 0;
-    var maxIndex = 0;
-    var sum = 0.0;
-    for (var i = 0; i < oriented.length; i++) {
-      final value = oriented[i];
-      if (value < min) {
-        min = value;
-        minIndex = i;
-      }
-      if (value > max) {
-        max = value;
-        maxIndex = i;
-      }
-      sum += value;
-    }
-    return _Extrema(
-      min: min,
-      max: max,
-      avg: sum / oriented.length,
-      minX: minIndex % size.width,
-      minY: minIndex ~/ size.width,
-      maxX: maxIndex % size.width,
-      maxY: maxIndex ~/ size.width,
-    );
   }
 
   void _drawAnchor(
@@ -322,12 +298,104 @@ class _ThermalImagePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ThermalImagePainter oldDelegate) {
     return oldDelegate.image != image ||
-        oldDelegate.temperatures != temperatures ||
         oldDelegate.settings != settings ||
-        oldDelegate.tMin != tMin ||
-        oldDelegate.tMax != tMax ||
+        oldDelegate.extrema != extrema ||
         oldDelegate.showOverlay != showOverlay;
   }
+}
+
+class _RenderRequest {
+  const _RenderRequest({
+    required this.temperatures,
+    required this.width,
+    required this.height,
+    required this.tMin,
+    required this.tMax,
+    required this.scale,
+    required this.settings,
+  });
+
+  final Float32List temperatures;
+  final int width;
+  final int height;
+  final double tMin;
+  final double tMax;
+  final int scale;
+  final RenderSettings settings;
+}
+
+class _RenderResult {
+  const _RenderResult({required this.raster, required this.extrema});
+
+  final RasterImage raster;
+  final _Extrema extrema;
+}
+
+_RenderResult _renderThermalRasterInIsolate(_RenderRequest request) {
+  return _RenderResult(
+    raster: renderThermalRaster(
+      temperatures: request.temperatures,
+      width: request.width,
+      height: request.height,
+      tMin: request.tMin,
+      tMax: request.tMax,
+      scale: request.scale,
+      settings: request.settings,
+    ),
+    extrema: _findExtrema(
+      request.temperatures,
+      request.width,
+      request.height,
+      request.settings,
+    ),
+  );
+}
+
+_Extrema _findExtrema(
+  Float32List temperatures,
+  int sourceWidth,
+  int sourceHeight,
+  RenderSettings settings,
+) {
+  final oriented = orientForDisplay(
+    temperatures,
+    sourceWidth,
+    sourceHeight,
+    rotation: settings.rotation,
+    hflip: settings.hflip,
+    vflip: settings.vflip,
+  );
+  final size = displayOrientedSize(
+    sourceWidth,
+    sourceHeight,
+    settings.rotation,
+  );
+  var min = double.infinity;
+  var max = double.negativeInfinity;
+  var minIndex = 0;
+  var maxIndex = 0;
+  var sum = 0.0;
+  for (var i = 0; i < oriented.length; i++) {
+    final value = oriented[i];
+    if (value < min) {
+      min = value;
+      minIndex = i;
+    }
+    if (value > max) {
+      max = value;
+      maxIndex = i;
+    }
+    sum += value;
+  }
+  return _Extrema(
+    min: min,
+    max: max,
+    avg: sum / oriented.length,
+    minX: minIndex % size.width,
+    minY: minIndex ~/ size.width,
+    maxX: maxIndex % size.width,
+    maxY: maxIndex ~/ size.width,
+  );
 }
 
 class _Extrema {

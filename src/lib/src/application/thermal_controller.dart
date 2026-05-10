@@ -105,9 +105,11 @@ class ThermalController extends Notifier<ThermalState> {
   StreamSubscription<Uint8List>? _subscription;
   Completer<Uint8List>? _transactionCompleter;
   final List<int> _transactionBuffer = [];
+  Future<void> _transactionQueue = Future<void>.value();
   final Queue<String> _debugBuffer = Queue<String>();
   Timer? _debugFlushTimer;
   Timer? _streamHeartbeat;
+  bool _streamWriteInFlight = false;
 
   @override
   ThermalState build() {
@@ -188,6 +190,7 @@ class ThermalController extends Notifier<ThermalState> {
 
   Future<void> disconnect() async {
     _streamHeartbeat?.cancel();
+    _streamWriteInFlight = false;
     await _serial.disconnect();
     _parser.reset();
     state = state.copyWith(
@@ -202,20 +205,62 @@ class ThermalController extends Notifier<ThermalState> {
     _transactionCompleter = null;
     _transactionBuffer.clear();
     _parser.reset();
-    await _writeLine('stream');
+    try {
+      await _writeLine('stream');
+    } catch (e) {
+      await _handleSerialWriteFailure(e);
+      return;
+    }
     _streamHeartbeat?.cancel();
     _streamHeartbeat = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      _writeLine('stream');
+      unawaited(_sendStreamHeartbeat());
     });
     state = state.copyWith(streaming: true, parserStats: _parser.stats);
   }
 
   Future<void> stopStream() async {
     _streamHeartbeat?.cancel();
+    _streamWriteInFlight = false;
     if (state.connected) {
-      await _writeLine('stop_stream');
+      try {
+        await _writeLine('stop_stream');
+      } catch (e) {
+        await _handleSerialWriteFailure(e);
+        return;
+      }
     }
     state = state.copyWith(streaming: false);
+  }
+
+  Future<void> _sendStreamHeartbeat() async {
+    if (_streamWriteInFlight || !state.connected || !state.streaming) return;
+    _streamWriteInFlight = true;
+    try {
+      await _writeLine('stream');
+    } catch (e) {
+      await _handleSerialWriteFailure(e);
+    } finally {
+      _streamWriteInFlight = false;
+    }
+  }
+
+  Future<void> _handleSerialWriteFailure(Object error) async {
+    _streamHeartbeat?.cancel();
+    _streamWriteInFlight = false;
+    try {
+      await _serial.disconnect();
+    } catch (_) {
+      // A broken serial handle can also fail while being closed.
+    }
+    _parser.reset();
+    state = state.copyWith(
+      connected: false,
+      streaming: false,
+      busy: false,
+      galleryLoading: false,
+      parserStats: _parser.stats,
+      error: error.toString(),
+    );
   }
 
   Future<void> loadGallery() async {
@@ -281,25 +326,38 @@ class ThermalController extends Notifier<ThermalState> {
   }
 
   Future<void> deletePhoto(String filename) async {
-    await _collectCommand(
-      'rm /$filename',
-      const Duration(milliseconds: 800),
-      (_) => false,
-    );
-    state = state.copyWith(
-      gallery: state.gallery
-          .where((photo) => photo.filename != filename)
-          .toList(),
-    );
+    if (!state.connected || state.busy) return;
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _collectCommand(
+        'rm /$filename',
+        const Duration(milliseconds: 800),
+        (_) => false,
+      );
+      state = state.copyWith(
+        busy: false,
+        gallery: state.gallery
+            .where((photo) => photo.filename != filename)
+            .toList(),
+      );
+    } catch (e) {
+      state = state.copyWith(busy: false, error: e.toString());
+    }
   }
 
   Future<void> clearPhotos() async {
-    await _collectCommand(
-      'clear_photos',
-      const Duration(milliseconds: 1000),
-      (_) => false,
-    );
-    state = state.copyWith(gallery: const []);
+    if (!state.connected || state.busy) return;
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _collectCommand(
+        'clear_photos',
+        const Duration(milliseconds: 1000),
+        (_) => false,
+      );
+      state = state.copyWith(busy: false, gallery: const []);
+    } catch (e) {
+      state = state.copyWith(busy: false, error: e.toString());
+    }
   }
 
   void updateRenderSettings(RenderSettings settings) {
@@ -332,9 +390,18 @@ class ThermalController extends Notifier<ThermalState> {
     Duration timeout,
     bool Function(Uint8List data) done,
   ) async {
-    while (_transactionCompleter != null) {
-      await Future<void>.delayed(const Duration(milliseconds: 25));
-    }
+    final transaction = _transactionQueue.then(
+      (_) => _runCollectCommand(command, timeout, done),
+    );
+    _transactionQueue = transaction.then<void>((_) {}, onError: (_) {});
+    return transaction;
+  }
+
+  Future<Uint8List> _runCollectCommand(
+    String command,
+    Duration timeout,
+    bool Function(Uint8List data) done,
+  ) async {
     _transactionBuffer.clear();
     final completer = Completer<Uint8List>();
     _transactionCompleter = completer;

@@ -141,7 +141,7 @@ bool _looksLikePhotoPayload(DeviceFileInfo file, Uint8List data) {
   }
 
   final view = ByteData.sublistView(data);
-  final samples = file.size == 32 * 32 * 2 ? 16 : 16;
+  const samples = 16;
   for (var i = 0; i < samples; i++) {
     final value = file.size == 32 * 32 * 2
         ? view.getUint16(i * 2, Endian.little) * 0.1 - 273.15
