@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,8 @@ import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
 import 'src/core/thermal_rendering.dart';
 import 'src/l10n/app_localizations.dart';
+import 'src/playback/playback_controller.dart';
+import 'src/playback/uir_reader.dart';
 import 'src/recording/recorder_controller.dart';
 import 'src/serial/serial_adapter.dart';
 import 'src/storage/gallery_entry.dart';
@@ -952,48 +955,231 @@ class LocalGalleryTile extends StatelessWidget {
     final duration = entry.duration;
     return Card(
       clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (_) =>
+              Dialog.fullscreen(child: LocalUirViewer(entry: entry)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    entry.kind == GalleryKind.video
+                        ? Icons.movie_outlined
+                        : Icons.image_outlined,
+                    color: colorScheme.primary,
+                  ),
+                  const Spacer(),
+                  Chip(
+                    label: const Text('Local'),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                entry.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  '${entry.width}x${entry.height}',
+                  if (entry.frameCount != null) '${entry.frameCount} frames',
+                  if (duration != null) _formatDuration(duration),
+                  _formatBytes(entry.sizeBytes),
+                ].join('  '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LocalUirViewer extends ConsumerStatefulWidget {
+  const LocalUirViewer({super.key, required this.entry});
+
+  final GalleryEntry entry;
+
+  @override
+  ConsumerState<LocalUirViewer> createState() => _LocalUirViewerState();
+}
+
+class _LocalUirViewerState extends ConsumerState<LocalUirViewer> {
+  late final Future<UirPlaybackController> _controllerFuture;
+  UirPlaybackController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllerFuture = _load();
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<UirPlaybackController> _load() async {
+    final bytes = await ref
+        .read(uirRepositoryProvider)
+        .readBytes(widget.entry.id);
+    final controller = UirPlaybackController(const UirReader().read(bytes));
+    _controller = controller;
+    return controller;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<UirPlaybackController>(
+      future: _controllerFuture,
+      builder: (context, snapshot) {
+        final controller = snapshot.data;
+        return Scaffold(
+          appBar: AppBar(title: Text(widget.entry.name)),
+          body: snapshot.hasError
+              ? Center(child: Text(snapshot.error.toString()))
+              : controller == null
+              ? const Center(child: CircularProgressIndicator())
+              : _LocalUirPlaybackView(controller: controller),
+        );
+      },
+    );
+  }
+}
+
+class _LocalUirPlaybackView extends ConsumerWidget {
+  const _LocalUirPlaybackView({required this.controller});
+
+  final UirPlaybackController controller;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final renderSettings = ref.watch(
+      thermalControllerProvider.select((state) => state.renderSettings),
+    );
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final frame = controller.currentFrame;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 900;
+            final viewer = frame == null
+                ? const EmptyPanel(
+                    icon: Icons.broken_image_outlined,
+                    title: 'No frames',
+                    subtitle: 'This UIR file does not contain readable frames.',
+                  )
+                : ThermalRasterView.frame(
+                    frame,
+                    settings: renderSettings,
+                    scale: wide ? 10 : 8,
+                  );
+            final controls = _PlaybackControls(controller: controller);
+            return wide
+                ? Row(
+                    children: [
+                      Expanded(child: viewer),
+                      SizedBox(width: 320, child: controls),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      Expanded(child: viewer),
+                      SizedBox(height: 190, child: controls),
+                    ],
+                  );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _PlaybackControls extends StatelessWidget {
+  const _PlaybackControls({required this.controller});
+
+  final UirPlaybackController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final frameCount = controller.frameCount;
+    return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Icon(
-                  entry.kind == GalleryKind.video
-                      ? Icons.movie_outlined
-                      : Icons.image_outlined,
-                  color: colorScheme.primary,
+                IconButton(
+                  tooltip: 'Previous frame',
+                  onPressed: frameCount > 1 ? controller.stepBackward : null,
+                  icon: const Icon(Icons.skip_previous),
+                ),
+                FilledButton(
+                  onPressed: controller.isVideo ? controller.togglePlay : null,
+                  child: Icon(
+                    controller.isPlaying ? Icons.pause : Icons.play_arrow,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Next frame',
+                  onPressed: frameCount > 1 ? controller.stepForward : null,
+                  icon: const Icon(Icons.skip_next),
                 ),
                 const Spacer(),
-                Chip(
-                  label: const Text('Local'),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
+                Text(
+                  '${controller.currentIndex + 1}/$frameCount',
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
-            const Spacer(),
+            Slider(
+              value: controller.currentIndex.toDouble(),
+              min: 0,
+              max: math.max(0, frameCount - 1).toDouble(),
+              divisions: frameCount > 1 ? frameCount - 1 : null,
+              onChanged: frameCount > 1
+                  ? (value) => controller.seekToFrame(value.round())
+                  : null,
+            ),
             Text(
-              entry.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              '${_formatDuration(controller.position)} / ${_formatDuration(controller.duration)}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
-            Text(
-              [
-                '${entry.width}x${entry.height}',
-                if (entry.frameCount != null) '${entry.frameCount} frames',
-                if (duration != null) _formatDuration(duration),
-                _formatBytes(entry.sizeBytes),
-              ].join('  '),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
+            SegmentedButton<double>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 0.5, label: Text('0.5x')),
+                ButtonSegment(value: 1, label: Text('1x')),
+                ButtonSegment(value: 2, label: Text('2x')),
+              ],
+              selected: {controller.speed},
+              onSelectionChanged: (values) {
+                controller.setSpeed(values.first);
+              },
             ),
           ],
         ),
