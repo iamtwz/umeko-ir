@@ -18,7 +18,9 @@ import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
 import 'src/core/thermal_rendering.dart';
 import 'src/l10n/app_localizations.dart';
+import 'src/recording/recorder_controller.dart';
 import 'src/serial/serial_adapter.dart';
+import 'src/storage/gallery_entry.dart';
 import 'src/ui/thermal_raster_view.dart';
 
 const _monoFontFamily = 'Menlo';
@@ -94,6 +96,20 @@ ThemeData _buildAppTheme(Brightness brightness) {
       isDense: true,
     ),
   );
+}
+
+String _formatDuration(Duration duration) {
+  final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return '$minutes:$seconds';
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kib = bytes / 1024;
+  if (kib < 1024) return '${kib.toStringAsFixed(1)} KB';
+  final mib = kib / 1024;
+  return '${mib.toStringAsFixed(1)} MB';
 }
 
 class AppShell extends ConsumerStatefulWidget {
@@ -603,6 +619,13 @@ class LivePane extends ConsumerWidget {
     final wide = MediaQuery.sizeOf(context).width >= 980;
     final viewer = ThermalViewerCard(state: state);
     final controls = ControlPanel(state: state, controller: controller);
+    final sidePanel = Column(
+      children: [
+        const RecordingControls(),
+        const SizedBox(height: 12),
+        Expanded(child: controls),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.all(16),
       child: wide
@@ -610,7 +633,7 @@ class LivePane extends ConsumerWidget {
               children: [
                 Expanded(child: viewer),
                 const SizedBox(width: 16),
-                SizedBox(width: 320, child: controls),
+                SizedBox(width: 320, child: sidePanel),
               ],
             )
           : ListView(
@@ -620,9 +643,96 @@ class LivePane extends ConsumerWidget {
                   child: viewer,
                 ),
                 const SizedBox(height: 16),
+                const RecordingControls(),
+                const SizedBox(height: 16),
                 controls,
               ],
             ),
+    );
+  }
+}
+
+class RecordingControls extends ConsumerWidget {
+  const RecordingControls({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final frame = ref.watch(
+      thermalControllerProvider.select((state) => state.currentFrame),
+    );
+    final recorder = ref.watch(recorderControllerProvider);
+    final controller = ref.read(recorderControllerProvider.notifier);
+    final busy = recorder.status == RecorderStatus.finalizing;
+    final canUseFrame = frame != null && !busy;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: canUseFrame
+                        ? () => controller.captureSnapshot()
+                        : null,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Capture'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: recorder.isRecording
+                      ? FilledButton.icon(
+                          onPressed: busy ? null : controller.stopRecording,
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Stop'),
+                        )
+                      : FilledButton.icon(
+                          onPressed: canUseFrame
+                              ? () => controller.startRecording()
+                              : null,
+                          icon: const Icon(Icons.fiber_manual_record),
+                          label: const Text('Record'),
+                        ),
+                ),
+              ],
+            ),
+            if (recorder.isRecording || busy) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 10,
+                    color: recorder.isRecording
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${recorder.frameCount} frames  ${_formatDuration(recorder.elapsed)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (recorder.error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                recorder.error!,
+                style: TextStyle(color: colorScheme.error, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -682,9 +792,12 @@ class GalleryPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(thermalControllerProvider);
+    final localGallery = ref.watch(localGalleryProvider);
     final controller = ref.read(thermalControllerProvider.notifier);
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
+    final localEntries = localGallery.asData?.value ?? const <GalleryEntry>[];
+    final hasAnyEntries = state.gallery.isNotEmpty || localEntries.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -708,7 +821,7 @@ class GalleryPane extends ConsumerWidget {
               ),
               const Spacer(),
               Text(
-                l10n.deviceFiles(state.gallery.length),
+                '${l10n.deviceFiles(state.gallery.length)}  Local: ${localEntries.length}',
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
             ],
@@ -734,27 +847,156 @@ class GalleryPane extends ConsumerWidget {
           ],
           const SizedBox(height: 16),
           Expanded(
-            child: state.gallery.isEmpty
+            child: !hasAnyEntries && !localGallery.isLoading
                 ? EmptyPanel(
                     icon: Icons.photo_library_outlined,
                     title: l10n.noDevicePhotos,
                     subtitle: l10n.readDeviceFiles,
                   )
-                : GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 260,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
+                : CustomScrollView(
+                    slivers: [
+                      if (state.gallery.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: _GallerySectionHeader(
+                            title: 'Device files',
+                            count: state.gallery.length,
+                          ),
                         ),
-                    itemCount: state.gallery.length,
-                    itemBuilder: (context, index) {
-                      final photo = state.gallery[index];
-                      return GalleryTile(photo: photo);
-                    },
+                        SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 260,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                              ),
+                          itemCount: state.gallery.length,
+                          itemBuilder: (context, index) {
+                            final photo = state.gallery[index];
+                            return GalleryTile(photo: photo);
+                          },
+                        ),
+                      ],
+                      if (localGallery.isLoading)
+                        const SliverToBoxAdapter(
+                          child: LinearProgressIndicator(),
+                        ),
+                      if (localGallery.hasError)
+                        SliverToBoxAdapter(
+                          child: Text(
+                            localGallery.error.toString(),
+                            style: TextStyle(color: colorScheme.error),
+                          ),
+                        ),
+                      if (localEntries.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: _GallerySectionHeader(
+                            title: 'Local recordings',
+                            count: localEntries.length,
+                          ),
+                        ),
+                        SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 260,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                              ),
+                          itemCount: localEntries.length,
+                          itemBuilder: (context, index) {
+                            return LocalGalleryTile(entry: localEntries[index]);
+                          },
+                        ),
+                      ],
+                    ],
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GallerySectionHeader extends StatelessWidget {
+  const _GallerySectionHeader({required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, top: 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
+          const SizedBox(width: 8),
+          Text('$count', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+}
+
+class LocalGalleryTile extends StatelessWidget {
+  const LocalGalleryTile({super.key, required this.entry});
+
+  final GalleryEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final duration = entry.duration;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  entry.kind == GalleryKind.video
+                      ? Icons.movie_outlined
+                      : Icons.image_outlined,
+                  color: colorScheme.primary,
+                ),
+                const Spacer(),
+                Chip(
+                  label: const Text('Local'),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              entry.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              [
+                '${entry.width}x${entry.height}',
+                if (entry.frameCount != null) '${entry.frameCount} frames',
+                if (duration != null) _formatDuration(duration),
+                _formatBytes(entry.sizeBytes),
+              ].join('  '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

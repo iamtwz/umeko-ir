@@ -105,11 +105,15 @@ class ThermalController extends Notifier<ThermalState> {
   StreamSubscription<Uint8List>? _subscription;
   Completer<Uint8List>? _transactionCompleter;
   final List<int> _transactionBuffer = [];
+  final StreamController<ThermalFrame> _frameController =
+      StreamController<ThermalFrame>.broadcast();
   Future<void> _transactionQueue = Future<void>.value();
   final Queue<String> _debugBuffer = Queue<String>();
   Timer? _debugFlushTimer;
   Timer? _streamHeartbeat;
   bool _streamWriteInFlight = false;
+
+  Stream<ThermalFrame> get frameStream => _frameController.stream;
 
   @override
   ThermalState build() {
@@ -124,6 +128,7 @@ class ThermalController extends Notifier<ThermalState> {
       _streamHeartbeat?.cancel();
       _debugFlushTimer?.cancel();
       _subscription?.cancel();
+      _frameController.close();
       _serial.disconnect();
     });
     Future<void>.microtask(refreshPorts);
@@ -438,6 +443,9 @@ class ThermalController extends Notifier<ThermalState> {
     if (!state.streaming) return;
     final frames = _parser.feed(bytes);
     if (frames.isNotEmpty) {
+      for (final frame in frames) {
+        _frameController.add(frame);
+      }
       state = state.copyWith(
         currentFrame: frames.last,
         parserStats: _parser.stats,
