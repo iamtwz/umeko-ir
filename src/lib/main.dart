@@ -1038,8 +1038,8 @@ class _DeviceGalleryTab extends StatelessWidget {
                 )
               : GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 260,
-                    childAspectRatio: 0.82,
+                    maxCrossAxisExtent: 300,
+                    mainAxisExtent: 268,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                   ),
@@ -1107,8 +1107,8 @@ class _LocalGalleryTab extends StatelessWidget {
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 260,
-              childAspectRatio: 0.82,
+              maxCrossAxisExtent: 300,
+              mainAxisExtent: 268,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
             ),
@@ -1177,7 +1177,7 @@ class LocalGalleryTile extends ConsumerWidget {
               Dialog.fullscreen(child: LocalUirViewer(entry: entry)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1224,11 +1224,11 @@ class LocalGalleryTile extends ConsumerWidget {
               const SizedBox(height: 10),
               Text(
                 entry.name,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 _galleryEntryInfo(context, entry, duration, temperatureUnit),
                 maxLines: 2,
@@ -1631,7 +1631,7 @@ class _GalleryThumbnailFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 2.05,
+      aspectRatio: 2.45,
       child: ClipRRect(borderRadius: BorderRadius.circular(6), child: child),
     );
   }
@@ -2174,6 +2174,7 @@ class GalleryTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     final renderSettings = ref.watch(
       thermalControllerProvider.select((state) => state.renderSettings),
     );
@@ -2198,31 +2199,15 @@ class GalleryTile extends ConsumerWidget {
           builder: (_) =>
               Dialog.fullscreen(child: _DevicePhotoViewer(photo: photo)),
         ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-              child: _GalleryThumbnailFrame(
-                child: ThermalRasterView(
-                  temperatures: photo.temperatures,
-                  width: photo.width,
-                  height: photo.height,
-                  tMin: photo.tMin,
-                  tMax: photo.tMax,
-                  settings: renderSettings,
-                  scale: 4,
-                  showOverlay: false,
-                  temperatureUnit: temperatureUnit,
-                ),
-              ),
-            ),
-            ListTile(
-              dense: true,
-              title: Text(photo.filename, overflow: TextOverflow.ellipsis),
-              subtitle: Text(_devicePhotoInfo(context, photo, temperatureUnit)),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
+                  Icon(Icons.image_outlined, color: colorScheme.primary),
+                  const Spacer(),
                   IconButton(
                     tooltip: l10n.delete,
                     icon: const Icon(Icons.delete_outline),
@@ -2259,8 +2244,39 @@ class GalleryTile extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              _GalleryThumbnailFrame(
+                child: ThermalRasterView(
+                  temperatures: photo.temperatures,
+                  width: photo.width,
+                  height: photo.height,
+                  tMin: photo.tMin,
+                  tMax: photo.tMax,
+                  settings: renderSettings,
+                  scale: 4,
+                  showOverlay: false,
+                  temperatureUnit: temperatureUnit,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                photo.filename,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _devicePhotoInfo(context, photo, temperatureUnit),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
