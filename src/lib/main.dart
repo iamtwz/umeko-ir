@@ -14,10 +14,13 @@ import 'src/application/app_settings_controller.dart';
 import 'src/application/build_channel.dart';
 import 'src/application/posthog_service.dart';
 import 'src/application/sentry_service.dart';
+import 'src/application/temperature_history_controller.dart';
 import 'src/application/thermal_points_controller.dart';
 import 'src/application/thermal_controller.dart';
+import 'src/core/temperature_series.dart';
 import 'src/application/update_service.dart';
 import 'src/core/device_gallery.dart';
+import 'src/core/thermal_points.dart';
 import 'src/core/thermal_rendering.dart';
 import 'src/l10n/app_localizations.dart';
 import 'src/playback/playback_controller.dart';
@@ -25,6 +28,7 @@ import 'src/playback/uir_reader.dart';
 import 'src/recording/recorder_controller.dart';
 import 'src/serial/serial_adapter.dart';
 import 'src/storage/gallery_entry.dart';
+import 'src/ui/temperature_curve_chart.dart';
 import 'src/ui/thermal_raster_view.dart';
 
 const _monoFontFamily = 'Menlo';
@@ -623,10 +627,15 @@ class LivePane extends ConsumerWidget {
     final wide = MediaQuery.sizeOf(context).width >= 980;
     final viewer = ThermalViewerCard(state: state);
     final controls = ControlPanel(state: state, controller: controller);
+    final points = ref.watch(thermalPointsProvider);
     final sidePanel = Column(
       children: [
         const RecordingControls(),
         const SizedBox(height: 12),
+        if (points.isNotEmpty) ...[
+          const SizedBox(height: 180, child: LiveTemperatureChart()),
+          const SizedBox(height: 12),
+        ],
         Expanded(child: controls),
       ],
     );
@@ -648,10 +657,30 @@ class LivePane extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 const RecordingControls(),
+                if (points.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const SizedBox(height: 180, child: LiveTemperatureChart()),
+                ],
                 const SizedBox(height: 16),
                 controls,
               ],
             ),
+    );
+  }
+}
+
+class LiveTemperatureChart extends ConsumerWidget {
+  const LiveTemperatureChart({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(temperatureHistoryProvider);
+    final points = ref.watch(thermalPointsProvider);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: TemperatureCurveChart(series: history.series, points: points),
+      ),
     );
   }
 }
@@ -1084,6 +1113,10 @@ class _LocalUirPlaybackView extends ConsumerWidget {
     );
     final points = ref.watch(thermalPointsProvider);
     final pointsController = ref.read(thermalPointsProvider.notifier);
+    final series = buildTemperatureSeries(
+      frames: controller.document.frames,
+      points: points,
+    );
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -1106,7 +1139,11 @@ class _LocalUirPlaybackView extends ConsumerWidget {
                     onPointMoved: pointsController.move,
                     onPointRemoved: pointsController.remove,
                   );
-            final controls = _PlaybackControls(controller: controller);
+            final controls = _PlaybackControls(
+              controller: controller,
+              series: series,
+              points: points,
+            );
             return wide
                 ? Row(
                     children: [
@@ -1128,9 +1165,15 @@ class _LocalUirPlaybackView extends ConsumerWidget {
 }
 
 class _PlaybackControls extends StatelessWidget {
-  const _PlaybackControls({required this.controller});
+  const _PlaybackControls({
+    required this.controller,
+    required this.series,
+    required this.points,
+  });
 
   final UirPlaybackController controller;
+  final Map<String, List<TemperatureSample>> series;
+  final List<ThermalPoint> points;
 
   @override
   Widget build(BuildContext context) {
@@ -1194,6 +1237,16 @@ class _PlaybackControls extends StatelessWidget {
                 controller.setSpeed(values.first);
               },
             ),
+            if (points.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Expanded(
+                child: TemperatureCurveChart(
+                  series: series,
+                  points: points,
+                  cursor: controller.position,
+                ),
+              ),
+            ],
           ],
         ),
       ),

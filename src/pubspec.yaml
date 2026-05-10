@@ -42,6 +42,7 @@ dependencies:
   collection: ^1.19.1
   archive: ^4.0.9
   path_provider: ^2.1.5
+  fl_chart: ^1.2.0
   shared_preferences: ^2.5.3
   package_info_plus: ^9.0.0
   sentry_flutter: ^9.19.0
