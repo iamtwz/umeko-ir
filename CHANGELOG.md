@@ -24,6 +24,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   the production APK.
 - Added dev/release channel labels to app titles, About dialogs, and telemetry
   metadata.
+- Added shared thermal format definitions for RP2040 legacy frames and ESP32
+  Heimann/MLX90640/MLX90641 stream and gallery payloads.
 
 ### Changed
 
@@ -31,6 +33,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Non-tag Android CI builds now produce `Umeko IR Dev` with package ID
   `com.example.umeko_ir_flutter.dev`.
 - Tag-based release artifacts keep the production app name and package ID.
+- CH340 USB serial devices are now preferred during automatic port selection.
 
 ### Fixed
 
@@ -57,6 +60,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   previews, charts, exports, and Gallery metadata.
 - Updated desktop and web default titles from the generated Flutter project name
   to `Umeko IR`.
+- Restarted the serial session before device Gallery reads when leaving live
+  stream mode, preventing leftover binary stream data from corrupting `ls` and
+  `cat` responses.
+- Accepted firmware `cat` dump prefixes and all-zero uint16 photo payloads when
+  locating device Gallery image data.
 
 ## [1.0.5] - 2026-05-07
 

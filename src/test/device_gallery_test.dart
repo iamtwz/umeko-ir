@@ -46,6 +46,25 @@ Total: 2 files
     expect(photo.tMin, closeTo(20, 0.001));
   });
 
+  test('finds all-zero uint16 payload after firmware dump prefix', () {
+    final file = const DeviceFileInfo(filename: 'empty.bin', size: 32 * 32 * 2);
+    final response = Uint8List.fromList([
+      ...utf8.encode('[FS] Dumping File Contents:\r\n'),
+      ...Uint8List(file.size),
+    ]);
+
+    final start = findPhotoPayloadStart(file, response);
+    final photo = parseDevicePhoto(
+      file,
+      Uint8List.sublistView(response, start, start + file.size),
+    );
+
+    expect(start, 29);
+    expect(photo.format, DevicePhotoFormat.uint16_32x32);
+    expect(photo.tMin, closeTo(-273.15, 0.001));
+    expect(photo.tMax, closeTo(-273.15, 0.001));
+  });
+
   test('parses 32x32 uint16 payload', () {
     final file = const DeviceFileInfo(
       filename: 'heimann.bin',
@@ -61,6 +80,17 @@ Total: 2 files
 
     expect(photo.format, DevicePhotoFormat.uint16_32x32);
     expect(photo.tAvg, closeTo(30, 0.11));
+  });
+
+  test('parses 16x12 float32 payload', () {
+    final file = const DeviceFileInfo(filename: 'mlx41.bin', size: 12 * 16 * 4);
+
+    final photo = parseDevicePhoto(file, floatPayload(16, 12));
+
+    expect(photo.format, DevicePhotoFormat.float32_16x12);
+    expect(photo.width, 16);
+    expect(photo.height, 12);
+    expect(photo.tMax, closeTo(21.91, 0.001));
   });
 
   test('rejects unsupported file sizes', () {

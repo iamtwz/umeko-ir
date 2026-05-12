@@ -283,8 +283,7 @@ class ThermalController extends Notifier<ThermalState> {
     state = state.copyWith(busy: true, clearError: true);
     try {
       if (state.streaming) {
-        await stopStream();
-        await Future<void>.delayed(const Duration(milliseconds: 250));
+        await _restartSerialForCommandMode();
       }
       final listBytes = await _collectCommand(
         'ls',
@@ -338,6 +337,32 @@ class ThermalController extends Notifier<ThermalState> {
         error: e.toString(),
       );
     }
+  }
+
+  Future<void> _restartSerialForCommandMode() async {
+    _streamHeartbeat?.cancel();
+    _streamWriteInFlight = false;
+    try {
+      await _writeLine('stop_stream');
+    } catch (e) {
+      await _handleSerialWriteFailure(e);
+      rethrow;
+    }
+
+    await _serial.disconnect();
+    _parser.reset();
+    state = state.copyWith(
+      connected: false,
+      streaming: false,
+      parserStats: _parser.stats,
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    final connected = await _connectWithFreshPort();
+    if (!connected) {
+      throw StateError('Serial port is not available after stopping stream');
+    }
+    state = state.copyWith(connected: true, streaming: false);
   }
 
   Future<void> deletePhoto(String filename) async {
@@ -529,10 +554,17 @@ class ThermalController extends Notifier<ThermalState> {
 bool _isPreferredPort(SerialPortDescriptor port) {
   final id = port.id.toLowerCase();
   final label = port.label.toLowerCase();
+  final description = port.description?.toLowerCase() ?? '';
   return port.vendorId == 0x2e8a ||
+      port.vendorId == 0x1a86 ||
       id.contains('usbmodem') ||
+      id.contains('wchusbserial') ||
       label.contains('pico') ||
-      label.contains('usbmodem');
+      label.contains('ch340') ||
+      label.contains('wch') ||
+      label.contains('usbmodem') ||
+      description.contains('ch340') ||
+      description.contains('wch');
 }
 
 bool _isMissingPortError(Object error) {

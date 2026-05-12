@@ -29,6 +29,18 @@ void main() {
     );
   });
 
+  test('buildSerialPortDescription identifies CH340 fallback', () {
+    expect(
+      buildSerialPortDescription(
+        description: 'USB Serial Device',
+        vendorId: 0x1a86,
+        productId: 0x7523,
+        trustDescription: false,
+      ),
+      'CH340 USB Serial / ESP32',
+    );
+  });
+
   test('cleanSerialMetadata rejects replacement characters and controls', () {
     expect(cleanSerialMetadata('USB \uFFFD Device'), isNull);
     expect(cleanSerialMetadata('USB\u0087Device'), isNull);

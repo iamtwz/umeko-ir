@@ -62,6 +62,29 @@ void main() {
     );
   });
 
+  test('loadGallery restarts serial session when stream is active', () async {
+    final serial = _FakeSerialAdapter();
+    final container = ProviderContainer(
+      overrides: [serialAdapterProvider.overrideWithValue(serial)],
+    );
+    addTearDown(container.dispose);
+
+    final controller = container.read(thermalControllerProvider.notifier);
+    await Future<void>.delayed(Duration.zero);
+    await controller.connect();
+
+    expect(container.read(thermalControllerProvider).streaming, isTrue);
+
+    await controller.loadGallery();
+
+    final commands = serial.writes.map((write) => write.trim()).toList();
+    expect(commands, containsAllInOrder(['stream', 'stop_stream', 'ls']));
+    expect(serial.connectCount, 2);
+    expect(serial.disconnectCount, 1);
+    expect(container.read(thermalControllerProvider).streaming, isFalse);
+    expect(container.read(thermalControllerProvider).gallery, hasLength(1));
+  });
+
   test(
     'connect auto-start stream handles write failures without throwing',
     () async {
@@ -138,6 +161,8 @@ class _FakeSerialAdapter implements SerialAdapter {
   );
   final List<String> writes = [];
   bool connected = false;
+  int connectCount = 0;
+  int disconnectCount = 0;
 
   @override
   Stream<Uint8List> get input => _controller.stream;
@@ -148,6 +173,7 @@ class _FakeSerialAdapter implements SerialAdapter {
   @override
   Future<void> connect(SerialPortDescriptor port, SerialOptions options) async {
     connected = true;
+    connectCount += 1;
   }
 
   @override
@@ -166,6 +192,7 @@ class _FakeSerialAdapter implements SerialAdapter {
   @override
   Future<void> disconnect() async {
     connected = false;
+    disconnectCount += 1;
   }
 
   void _emitText(String text) {

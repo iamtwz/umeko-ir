@@ -49,6 +49,17 @@ void main() {
     expect(frames.single.tMin, closeTo(20, 0.11));
   });
 
+  test('parses Heimann frames across chunks', () {
+    final packet = heimannPacket(32, 32, 40, 20);
+    final parser = ThermalParser();
+
+    expect(parser.feed(Uint8List.sublistView(packet, 0, 128)), isEmpty);
+    final frames = parser.feed(Uint8List.sublistView(packet, 128));
+
+    expect(frames, hasLength(1));
+    expect(frames.single.sensorType, ThermalSensorType.heimann);
+  });
+
   test('parses legacy BEGIN float frames', () {
     final packet = legacyPacket(32, 24, 34, 21, 27);
     final parser = ThermalParser();

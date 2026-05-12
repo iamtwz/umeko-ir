@@ -23,6 +23,7 @@ String? buildSerialPortDescription({
   if (trustDescription && cleanDescription != null) return cleanDescription;
 
   if (vendorId == 0x2e8a) return 'Raspberry Pi Pico / RP2040';
+  if (vendorId == 0x1a86) return 'CH340 USB Serial / ESP32';
   if (vendorId != null || productId != null) {
     final parts = <String>[];
     if (vendorId != null) parts.add('VID:${_hex16(vendorId)}');
