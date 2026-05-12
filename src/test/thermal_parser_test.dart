@@ -79,6 +79,30 @@ void main() {
     expect(frames, hasLength(1));
     expect(parser.stats.syncErrors, greaterThan(0));
   });
+
+  test('bounds buffer under malformed streams', () {
+    final parser = ThermalParser();
+    // 3 MB of noise with no markers. Without the cap the parser would keep
+    // the whole thing around. The cap should trim to ~128KB and mark a
+    // sync error.
+    final noise = Uint8List(3 * 1024 * 1024);
+    parser.feed(noise);
+
+    expect(parser.stats.bufferLength, lessThanOrEqualTo(256 * 1024));
+    expect(parser.stats.syncErrors, greaterThan(0));
+  });
+
+  test('recovers a real packet after a buffer-cap trim', () {
+    final parser = ThermalParser();
+    // Flood with garbage, then feed a real packet. The cap should preserve
+    // enough tail for the subsequent marker to sync.
+    parser.feed(Uint8List(3 * 1024 * 1024));
+    final packet = mlxPacket('MLX40BEGIN', 'MLX40END', 32, 24, 30, 10);
+    final frames = parser.feed(packet);
+
+    expect(frames, hasLength(1));
+    expect(frames.single.sensorType, ThermalSensorType.mlx90640);
+  });
 }
 
 Uint8List mlxPacket(

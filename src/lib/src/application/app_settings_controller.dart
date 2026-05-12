@@ -137,8 +137,20 @@ class AppSettingsController extends Notifier<AppSettingsState> {
   Future<void> setAppTrackingEnabled(bool enabled) async {
     state = state.copyWith(appTrackingEnabled: enabled);
     await _preferences.setBool(appTrackingEnabledPreferenceKey, enabled);
-    await configurePostHog(enabled: enabled);
-    await configureSentry(enabled: enabled);
+    // Run PostHog and Sentry reconfiguration in parallel so one hanging SDK
+    // does not block the other from honouring the opt-out.
+    Future<void> guard(String label, Future<void> future) async {
+      try {
+        await future;
+      } catch (error, stackTrace) {
+        debugPrint('$label failed: $error\n$stackTrace');
+      }
+    }
+
+    await Future.wait<void>([
+      guard('configurePostHog', configurePostHog(enabled: enabled)),
+      guard('configureSentry', configureSentry(enabled: enabled)),
+    ]);
   }
 
   Future<void> setAutoUpdateCheckEnabled(bool enabled) async {
@@ -147,22 +159,30 @@ class AppSettingsController extends Notifier<AppSettingsState> {
   }
 
   Future<void> _load() async {
-    final code = await _preferences.getString(_languageKey);
-    final themeCode = await _preferences.getString(_themeKey);
-    final temperatureUnitCode = await _preferences.getString(
-      _temperatureUnitKey,
-    );
-    final appTrackingEnabled =
-        await _preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
-    final autoUpdateCheckEnabled =
-        await _preferences.getBool(autoUpdateCheckEnabledPreferenceKey) ?? true;
-    state = state.copyWith(
-      language: AppLanguage.fromCode(code),
-      theme: AppThemePreference.fromCode(themeCode),
-      temperatureUnit: TemperatureUnit.fromCode(temperatureUnitCode),
-      appTrackingEnabled: appTrackingEnabled,
-      autoUpdateCheckEnabled: autoUpdateCheckEnabled,
-      loaded: true,
-    );
+    try {
+      final code = await _preferences.getString(_languageKey);
+      final themeCode = await _preferences.getString(_themeKey);
+      final temperatureUnitCode = await _preferences.getString(
+        _temperatureUnitKey,
+      );
+      final appTrackingEnabled =
+          await _preferences.getBool(appTrackingEnabledPreferenceKey) ?? true;
+      final autoUpdateCheckEnabled =
+          await _preferences.getBool(autoUpdateCheckEnabledPreferenceKey) ??
+          true;
+      state = state.copyWith(
+        language: AppLanguage.fromCode(code),
+        theme: AppThemePreference.fromCode(themeCode),
+        temperatureUnit: TemperatureUnit.fromCode(temperatureUnitCode),
+        appTrackingEnabled: appTrackingEnabled,
+        autoUpdateCheckEnabled: autoUpdateCheckEnabled,
+        loaded: true,
+      );
+    } catch (error, stackTrace) {
+      // Fall back to defaults; a broken preferences store must not prevent
+      // the app from running. Callers will still see loaded == true.
+      debugPrint('AppSettings load failed: $error\n$stackTrace');
+      state = state.copyWith(loaded: true);
+    }
   }
 }

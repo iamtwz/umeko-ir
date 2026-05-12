@@ -68,6 +68,42 @@ void main() {
     expect(document.frames, hasLength(2));
     expect(document.frames.last.frame.temperatures.first, closeTo(21, 0.005));
   });
+
+  test('stops recording when byteLimit is reached', () async {
+    final serial = _FrameSerialAdapter();
+    final repository = _MemoryUirRepository();
+    final container = ProviderContainer(
+      overrides: [
+        serialAdapterProvider.overrideWithValue(serial),
+        uirRepositoryProvider.overrideWithValue(repository),
+        recorderControllerProvider.overrideWith(
+          // 8 KB: two 3KB MLX40 frames will exceed it even after compression.
+          () => RecorderController(byteLimit: 8 * 1024),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await _connectAndEmitFrame(container, serial, 0);
+
+    final recorder = container.read(recorderControllerProvider.notifier);
+    await recorder.startRecording(name: 'Capped');
+    // Emit enough frames to blow past the cap. The controller polls byteLength
+    // after each write and should stop+save on the offending frame.
+    for (var i = 1; i < 20; i++) {
+      serial.emitFrame(i);
+      await Future<void>.delayed(Duration.zero);
+    }
+    // Drain the async `_finalizeAtLimit()` completion.
+    for (var i = 0; i < 5; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    final state = container.read(recorderControllerProvider);
+    expect(state.status, RecorderStatus.stoppedAtLimit);
+    expect(state.lastSavedEntry, isNotNull);
+    expect(state.error, contains('size limit'));
+    expect(repository.savedBytes, hasLength(1));
+  });
 }
 
 Future<void> _connectAndEmitFrame(

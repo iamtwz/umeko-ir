@@ -151,6 +151,47 @@ void main() {
     expect(document.frames.single.encoding, UirFrameEncoding.zlibFloat32);
     expect(document.frames.single.frame.temperatures[1], closeTo(700, 0.001));
   });
+
+  test('abortOnError throws UirCorruptedException on bad CRC', () {
+    final bytes = _writeSimpleDocument().toList();
+    // Corrupt the first frame record's CRC tail.
+    // Header is uirHeaderLength bytes; the frame record CRC is the last 4
+    // bytes of that record, and the frame length sits at header+4.
+    final view = ByteData.sublistView(
+      Uint8List.fromList(bytes),
+      uirHeaderLength + 4,
+      uirHeaderLength + 8,
+    );
+    final recordLength = view.getUint32(0, Endian.little);
+    // Flip one bit in the CRC trailer of the first frame.
+    bytes[uirHeaderLength + recordLength - 1] ^= 0x5a;
+
+    final corrupted = Uint8List.fromList(bytes);
+
+    expect(
+      () => const UirReader(policy: UirReadPolicy.abortOnError).read(corrupted),
+      throwsA(isA<UirCorruptedException>()),
+    );
+    // Default policy still succeeds (skips the bad record).
+    expect(const UirReader().read(corrupted).issues, isNotEmpty);
+  });
+}
+
+Uint8List _writeSimpleDocument() {
+  final createdAt = DateTime.utc(2026, 5, 10, 12);
+  final writer = UirByteWriter(
+    width: 4,
+    height: 3,
+    sensorType: ThermalSensorType.mlx90640,
+    createdAt: createdAt,
+    isVideo: true,
+  );
+  writer.writeFrame(_frame(0, createdAt), elapsed: Duration.zero);
+  writer.writeFrame(
+    _frame(1, createdAt.add(const Duration(milliseconds: 50))),
+    elapsed: const Duration(milliseconds: 50),
+  );
+  return writer.finish();
 }
 
 Uint8List _sampleVideo() {

@@ -118,12 +118,14 @@ class _ThermalRasterViewState extends State<ThermalRasterView> {
       scale: widget.scale,
       settings: widget.settings,
     );
-    late final _RenderResult result;
+    final _RenderResult result;
     try {
       result = await compute(_renderThermalRasterInIsolate, request);
     } catch (error, stackTrace) {
+      // If isolate spawn fails, skip this frame instead of rendering on the UI
+      // thread — at 30 FPS the sync path would jank for hundreds of ms.
       debugPrint('Thermal raster render failed: $error\n$stackTrace');
-      result = _renderThermalRasterInIsolate(request);
+      return;
     }
     if (!mounted || generation != _generation) return;
     _raster = result.raster;
