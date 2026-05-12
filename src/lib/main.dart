@@ -440,7 +440,7 @@ class _HeaderRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final controls = <Widget>[
-          StatusPill(
+          ConnectionStatusDot(
             label: state.connected ? l10n.connected : l10n.disconnected,
             active: state.connected,
           ),
@@ -3770,6 +3770,42 @@ class MetricRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ConnectionStatusDot extends StatelessWidget {
+  const ConnectionStatusDot({
+    super.key,
+    required this.label,
+    required this.active,
+  });
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = active ? colorScheme.primary : colorScheme.outline;
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        child: SizedBox.square(
+          dimension: 40,
+          child: Center(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: colorScheme.surface, width: 2),
+              ),
+              child: const SizedBox.square(dimension: 12),
+            ),
+          ),
+        ),
       ),
     );
   }

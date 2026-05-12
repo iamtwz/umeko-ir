@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -53,8 +53,18 @@ class IoUirRepository implements UirRepository {
       dataFile = File(p.join(directory.path, filename));
     } while (await dataFile.exists());
     final tempFile = File('${dataFile.path}.tmp');
-    await tempFile.writeAsBytes(bytes, flush: true);
-    await tempFile.rename(dataFile.path);
+    try {
+      await tempFile.writeAsBytes(bytes, flush: true);
+      await tempFile.rename(dataFile.path);
+    } catch (e) {
+      // Best-effort cleanup so failed saves do not litter the directory.
+      try {
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+      throw UirRepositoryIoException('Failed to save UIR recording: $e');
+    }
 
     final manifest = UirManifest.fromDocument(
       id: id,
@@ -73,15 +83,27 @@ class IoUirRepository implements UirRepository {
     if (!await file.exists()) {
       throw UirRepositoryException('UIR recording not found: $id');
     }
-    return file.readAsBytes();
+    try {
+      return await file.readAsBytes();
+    } on FileSystemException catch (e) {
+      throw UirRepositoryIoException(
+        'Failed to read UIR recording $id: ${e.message}',
+      );
+    }
   }
 
   @override
   Future<void> delete(String id) async {
     final directory = await _ensureRecordingsDirectory();
-    await _deleteIfExists(
-      File(p.join(directory.path, '${_checkedId(id)}.uir')),
-    );
+    try {
+      await _deleteIfExists(
+        File(p.join(directory.path, '${_checkedId(id)}.uir')),
+      );
+    } on FileSystemException catch (e) {
+      throw UirRepositoryIoException(
+        'Failed to delete UIR recording $id: ${e.message}',
+      );
+    }
   }
 
   Future<Directory> _ensureRecordingsDirectory() async {
@@ -99,14 +121,22 @@ class IoUirRepository implements UirRepository {
   }
 
   Future<UirManifest?> _readUirEntry(File file) async {
+    final Uint8List bytes;
     try {
       if (!await file.exists()) return null;
-      final bytes = await file.readAsBytes();
-      final filename = p.basename(file.path);
-      final id = filename.endsWith('.uir')
-          ? filename.substring(0, filename.length - 4)
-          : filename;
-      if (!_idPattern.hasMatch(id)) return null;
+      bytes = await file.readAsBytes();
+    } on FileSystemException catch (e) {
+      // I/O failures (permissions, device errors) should be observable even
+      // though we still want the rest of the gallery to render.
+      debugPrint('uir_repository: skipping ${file.path} due to I/O error: $e');
+      return null;
+    }
+    final filename = p.basename(file.path);
+    final id = filename.endsWith('.uir')
+        ? filename.substring(0, filename.length - 4)
+        : filename;
+    if (!_idPattern.hasMatch(id)) return null;
+    try {
       final document = const UirReader().read(bytes);
       return UirManifest.fromDocument(
         id: id,
@@ -115,7 +145,8 @@ class IoUirRepository implements UirRepository {
         sizeBytes: bytes.length,
         document: document,
       );
-    } catch (_) {
+    } on FormatException catch (e) {
+      debugPrint('uir_repository: ${file.path} is corrupted: $e');
       return null;
     }
   }

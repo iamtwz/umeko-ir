@@ -1,12 +1,35 @@
-import 'dart:typed_data';
-
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/thermal_frame.dart';
 import '../core/uir_format.dart';
 
+/// How the reader reacts when it encounters a malformed or CRC-failing record.
+enum UirReadPolicy {
+  /// Skip the record, collect it in [UirDocument.issues] and keep reading.
+  /// This is the default and preserves partial playback when a file is
+  /// truncated or contains a single corrupted frame.
+  skipBadRecords,
+
+  /// Throw [UirCorruptedException] on the first bad record.
+  abortOnError,
+}
+
+class UirCorruptedException implements Exception {
+  const UirCorruptedException(this.issue);
+
+  final UirReadIssue issue;
+
+  @override
+  String toString() =>
+      'UIR record corrupted at offset ${issue.offset}: '
+      '${issue.issue.name}${issue.details != null ? " (${issue.details})" : ""}';
+}
+
 class UirReader {
-  const UirReader();
+  const UirReader({this.policy = UirReadPolicy.skipBadRecords});
+
+  final UirReadPolicy policy;
 
   UirDocument read(Uint8List bytes) {
     if (bytes.length < uirHeaderLength) {
@@ -29,7 +52,8 @@ class UirReader {
         if (_recordCrcOk(bytes, offset, length)) {
           footerFrameCount = view.getUint32(8, Endian.little);
         } else {
-          issues.add(
+          _recordIssue(
+            issues,
             UirReadIssue(offset: offset, issue: UirRecordIssue.badCrc),
           );
         }
@@ -38,20 +62,25 @@ class UirReader {
       if (magic != uirFrameMagic && magic != uirMetadataMagic) {
         final next = _findNextMagic(bytes, offset + 1);
         if (next == -1) break;
-        issues.add(
+        _recordIssue(
+          issues,
           UirReadIssue(offset: offset, issue: UirRecordIssue.badLength),
         );
         offset = next;
         continue;
       }
       if (length < 12 || offset + length > bytes.length) {
-        issues.add(
+        _recordIssue(
+          issues,
           UirReadIssue(offset: offset, issue: UirRecordIssue.truncated),
         );
         break;
       }
       if (!_recordCrcOk(bytes, offset, length)) {
-        issues.add(UirReadIssue(offset: offset, issue: UirRecordIssue.badCrc));
+        _recordIssue(
+          issues,
+          UirReadIssue(offset: offset, issue: UirRecordIssue.badCrc),
+        );
         offset += length;
         continue;
       }
@@ -62,7 +91,8 @@ class UirReader {
           metadataRecords.add(_readMetadata(bytes, offset, length));
         }
       } on FormatException catch (error) {
-        issues.add(
+        _recordIssue(
+          issues,
           UirReadIssue(
             offset: offset,
             issue: UirRecordIssue.unsupportedEncoding,
@@ -80,6 +110,20 @@ class UirReader {
       issues: List.unmodifiable(issues),
       footerFrameCount: footerFrameCount,
     );
+  }
+
+  void _recordIssue(List<UirReadIssue> issues, UirReadIssue issue) {
+    if (policy == UirReadPolicy.abortOnError) {
+      throw UirCorruptedException(issue);
+    }
+    issues.add(issue);
+    assert(() {
+      debugPrint(
+        'UirReader: issue ${issue.issue.name} at offset ${issue.offset}'
+        '${issue.details != null ? " (${issue.details})" : ""}',
+      );
+      return true;
+    }());
   }
 
   UirHeader _readHeader(Uint8List bytes) {

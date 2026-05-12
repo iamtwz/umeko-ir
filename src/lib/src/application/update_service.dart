@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -21,21 +22,36 @@ class UpdateInfo {
 Future<UpdateInfo?> checkForUpdate({
   required String currentVersion,
   http.Client? client,
+  Duration timeout = const Duration(seconds: 10),
 }) async {
   final httpClient = client ?? http.Client();
   final closeClient = client == null;
   try {
-    final response = await httpClient.get(
-      Uri.parse(_latestReleaseUrl),
-      headers: const {
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'Umeko-IR',
-      },
-    );
+    final http.Response response;
+    try {
+      response = await httpClient
+          .get(
+            Uri.parse(_latestReleaseUrl),
+            headers: const {
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'Umeko-IR',
+            },
+          )
+          .timeout(timeout);
+    } on TimeoutException {
+      return null;
+    } on http.ClientException {
+      return null;
+    }
     if (response.statusCode != 200) return null;
 
-    final payload = jsonDecode(response.body);
+    final Object? payload;
+    try {
+      payload = jsonDecode(response.body);
+    } on FormatException {
+      return null;
+    }
     if (payload is! Map<String, Object?>) return null;
     if (payload['draft'] == true || payload['prerelease'] == true) return null;
 

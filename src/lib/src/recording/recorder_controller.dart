@@ -22,9 +22,17 @@ final localGalleryProvider = FutureProvider<List<GalleryEntry>>((ref) {
 });
 
 final recorderControllerProvider =
-    NotifierProvider<RecorderController, RecorderState>(RecorderController.new);
+    NotifierProvider<RecorderController, RecorderState>(
+      () => RecorderController(),
+    );
 
-enum RecorderStatus { idle, recording, finalizing, error }
+enum RecorderStatus { idle, recording, finalizing, error, stoppedAtLimit }
+
+/// Soft cap on a single recording's on-disk footprint. We stop recording when
+/// the in-progress writer crosses this threshold to avoid filling the user's
+/// disk with a single runaway capture. The value mirrors realistic field use
+/// (~30 minutes at 30 FPS with float32 payloads).
+const int kDefaultRecordingByteLimit = 500 * 1024 * 1024;
 
 class RecorderState {
   const RecorderState({
@@ -70,12 +78,17 @@ class RecorderState {
 }
 
 class RecorderController extends Notifier<RecorderState> {
+  RecorderController({this.byteLimit = kDefaultRecordingByteLimit});
+
+  final int byteLimit;
+
   UirByteWriter? _writer;
   StreamSubscription<ThermalFrame>? _frameSubscription;
   Stopwatch? _stopwatch;
   Timer? _elapsedTimer;
   List<ThermalPoint> _recordingPoints = const [];
   String? _recordingNameOverride;
+  bool _finalizingAtLimit = false;
 
   @override
   RecorderState build() {
@@ -204,6 +217,7 @@ class RecorderController extends Notifier<RecorderState> {
     _stopwatch = null;
     _recordingPoints = const [];
     _recordingNameOverride = null;
+    _finalizingAtLimit = false;
     state = const RecorderState();
   }
 
@@ -215,11 +229,32 @@ class RecorderController extends Notifier<RecorderState> {
     final writer = _writer;
     final stopwatch = _stopwatch;
     if (writer == null || stopwatch == null) return;
+    if (_finalizingAtLimit) return;
     writer.writeFrame(frame, elapsed: stopwatch.elapsed);
     state = state.copyWith(
       frameCount: writer.frameCount,
       elapsed: stopwatch.elapsed,
     );
+    if (writer.byteLength >= byteLimit) {
+      _finalizingAtLimit = true;
+      unawaited(_finalizeAtLimit());
+    }
+  }
+
+  Future<void> _finalizeAtLimit() async {
+    try {
+      if (!state.isRecording) return;
+      final entry = await stopRecording();
+      state = RecorderState(
+        status: RecorderStatus.stoppedAtLimit,
+        lastSavedEntry: entry,
+        error:
+            'Recording stopped: reached the '
+            '${(byteLimit / (1024 * 1024)).toStringAsFixed(0)} MB size limit.',
+      );
+    } finally {
+      _finalizingAtLimit = false;
+    }
   }
 
   void _fail(Object error) {

@@ -25,3 +25,11 @@ class UirRepositoryException implements Exception {
   @override
   String toString() => message;
 }
+
+class UirRepositoryCorruptedException extends UirRepositoryException {
+  const UirRepositoryCorruptedException(super.message);
+}
+
+class UirRepositoryIoException extends UirRepositoryException {
+  const UirRepositoryIoException(super.message);
+}

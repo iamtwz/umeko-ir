@@ -28,9 +28,25 @@ class WebSerialAdapter implements SerialAdapter {
         .callMethod<JSPromise<JSArray<JSObject>>>('getPorts'.toJS)
         .toDart;
     final descriptors = <SerialPortDescriptor>[];
+    final seenIds = <String, int>{};
     for (var i = 0; i < ports.length; i++) {
       final port = ports[i];
-      descriptors.add(_descriptorFor(port, 'Authorized Serial ${i + 1}'));
+      final descriptor = _descriptorFor(port, i);
+      // Disambiguate collisions (e.g. multiple identical devices with no serial).
+      final count = (seenIds[descriptor.id] ?? 0) + 1;
+      seenIds[descriptor.id] = count;
+      descriptors.add(
+        count == 1
+            ? descriptor
+            : SerialPortDescriptor(
+                id: '${descriptor.id}#$count',
+                label: descriptor.label,
+                description: descriptor.description,
+                vendorId: descriptor.vendorId,
+                productId: descriptor.productId,
+                virtual: descriptor.virtual,
+              ),
+      );
     }
     if (descriptors.isEmpty) {
       descriptors.add(
@@ -63,11 +79,28 @@ class WebSerialAdapter implements SerialAdapter {
       final ports = await serial
           .callMethod<JSPromise<JSArray<JSObject>>>('getPorts'.toJS)
           .toDart;
-      selectedPort = ports.length > 0
-          ? ports[0]
-          : await serial
-                .callMethod<JSPromise<JSObject>>('requestPort'.toJS)
-                .toDart;
+      JSObject? matched;
+      final seenIds = <String, int>{};
+      for (var i = 0; i < ports.length; i++) {
+        final candidate = ports[i];
+        final descriptor = _descriptorFor(candidate, i);
+        final count = (seenIds[descriptor.id] ?? 0) + 1;
+        seenIds[descriptor.id] = count;
+        final effectiveId = count == 1
+            ? descriptor.id
+            : '${descriptor.id}#$count';
+        if (effectiveId == port.id) {
+          matched = candidate;
+          break;
+        }
+      }
+      if (matched == null) {
+        throw StateError(
+          'Authorized serial port "${port.id}" is no longer available. '
+          'Re-select the device.',
+        );
+      }
+      selectedPort = matched;
     }
 
     final openOptions = JSObject()
@@ -147,32 +180,64 @@ class WebSerialAdapter implements SerialAdapter {
   Future<void> _readLoop() async {
     final reader = _reader;
     if (reader == null) return;
-    while (_reading) {
-      try {
-        final result = await reader
-            .callMethod<JSPromise<JSObject>>('read'.toJS)
-            .toDart;
-        final done = (result['done'] as JSBoolean?)?.toDart ?? false;
-        if (done) break;
-        final value = result['value'] as JSUint8Array?;
-        if (value != null) {
-          _controller.add(Uint8List.fromList(value.toDart));
+    try {
+      while (_reading) {
+        try {
+          final result = await reader
+              .callMethod<JSPromise<JSObject>>('read'.toJS)
+              .toDart;
+          final done = (result['done'] as JSBoolean?)?.toDart ?? false;
+          if (done) break;
+          final value = result['value'] as JSUint8Array?;
+          if (value != null) {
+            _controller.add(Uint8List.fromList(value.toDart));
+          }
+        } catch (e) {
+          if (_reading) _controller.addError(e);
+          break;
         }
-      } catch (e) {
-        if (_reading) _controller.addError(e);
-        break;
       }
+    } finally {
+      _reading = false;
     }
   }
 
-  SerialPortDescriptor _descriptorFor(JSObject port, String fallback) {
+  SerialPortDescriptor _descriptorFor(JSObject port, int index) {
     final info = port.callMethod<JSObject>('getInfo'.toJS);
+    final vendorId = (info['usbVendorId'] as JSNumber?)?.toDartInt;
+    final productId = (info['usbProductId'] as JSNumber?)?.toDartInt;
+    final serialNumber = (info['serialNumber'] as JSString?)?.toDart;
+    final id = _stableId(vendorId, productId, serialNumber, index);
+    final label = vendorId != null && productId != null
+        ? 'Authorized Serial '
+              '${vendorId.toRadixString(16).padLeft(4, '0')}:'
+              '${productId.toRadixString(16).padLeft(4, '0')}'
+              '${serialNumber != null && serialNumber.isNotEmpty ? ' ($serialNumber)' : ''}'
+        : 'Authorized Serial ${index + 1}';
     return SerialPortDescriptor(
-      id: 'authorized-${identityHashCode(port)}',
-      label: fallback,
+      id: id,
+      label: label,
       description: 'Browser-authorized serial device',
-      vendorId: (info['usbVendorId'] as JSNumber?)?.toDartInt,
-      productId: (info['usbProductId'] as JSNumber?)?.toDartInt,
+      vendorId: vendorId,
+      productId: productId,
     );
+  }
+
+  static String _stableId(
+    int? vendorId,
+    int? productId,
+    String? serialNumber,
+    int index,
+  ) {
+    if (vendorId != null && productId != null) {
+      final vid = vendorId.toRadixString(16).padLeft(4, '0');
+      final pid = productId.toRadixString(16).padLeft(4, '0');
+      if (serialNumber != null && serialNumber.isNotEmpty) {
+        return 'authorized-$vid-$pid-$serialNumber';
+      }
+      return 'authorized-$vid-$pid';
+    }
+    // Fallback: stable only within one session.
+    return 'authorized-unknown-$index';
   }
 }

@@ -20,6 +20,14 @@ final _mlx41PacketSize =
     mlx90641BeginMarker.length + _mlx41PayloadSize + mlx90641EndMarker.length;
 
 class ThermalParser {
+  // Guard against unbounded buffer growth on malformed streams. The largest
+  // known packet (legacy 160x120 float32) is ~77KB; a few MB of slack is plenty
+  // while still bounding memory under garbage input.
+  static const int _maxBufferBytes = 2 * 1024 * 1024;
+  // When we exceed the cap, keep the tail so that a half-received real packet
+  // can still be recovered once the sync marker lands.
+  static const int _trimKeepTail = 128 * 1024;
+
   Uint8List _buffer = Uint8List(0);
   ParserStats _stats = const ParserStats.empty();
   int _frameCounter = 0;
@@ -34,6 +42,13 @@ class ThermalParser {
     nextBuffer.setAll(0, _buffer);
     nextBuffer.setAll(_buffer.length, chunk);
     _buffer = nextBuffer;
+
+    if (_buffer.length > _maxBufferBytes) {
+      // Treat this as a desync event: drop everything but the tail so a real
+      // packet boundary can still be found once the marker lands.
+      _buffer = _buffer.sublist(_buffer.length - _trimKeepTail);
+      _stats = _stats.copyWith(syncErrors: _stats.syncErrors + 1);
+    }
 
     final frames = <ThermalFrame>[];
 

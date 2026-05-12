@@ -453,6 +453,17 @@ class ThermalExporter {
     late final Isolate isolate;
     StreamSubscription<Object?>? subscription;
     Timer? cancelTimer;
+    Timer? timeoutTimer;
+    SendPort? isolateCancelPort;
+    var cancelSignalled = false;
+
+    void signalCancelToWorker() {
+      if (cancelSignalled) return;
+      cancelSignalled = true;
+      try {
+        isolateCancelPort?.send('cancel');
+      } catch (_) {}
+    }
 
     subscription = receivePort.listen((message) {
       if (message == null) {
@@ -461,6 +472,10 @@ class ThermalExporter {
             const ThermalExportException('APNG export stopped unexpectedly.'),
           );
         }
+        return;
+      }
+      if (message is SendPort) {
+        isolateCancelPort = message;
         return;
       }
       if (message is List && message.isNotEmpty) {
@@ -479,6 +494,10 @@ class ThermalExporter {
             if (message.length >= 2 && !completer.isCompleted) {
               final data = message[1] as TransferableTypedData;
               completer.complete(data.materialize().asUint8List());
+            }
+          case 'cancelled':
+            if (!completer.isCompleted) {
+              completer.completeError(const ThermalExportCancelled());
             }
           case 'error':
             if (!completer.isCompleted) {
@@ -511,11 +530,23 @@ class ThermalExporter {
       if (shouldCancel != null) {
         cancelTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
           if (!shouldCancel()) return;
+          signalCancelToWorker();
           if (!completer.isCompleted) {
             completer.completeError(const ThermalExportCancelled());
           }
         });
       }
+      // Hard wall-clock ceiling so a hung worker cannot freeze the UI forever.
+      timeoutTimer = Timer(const Duration(minutes: 5), () {
+        signalCancelToWorker();
+        if (!completer.isCompleted) {
+          completer.completeError(
+            const ThermalExportException(
+              'APNG export timed out after 5 minutes.',
+            ),
+          );
+        }
+      });
     } catch (_) {
       await subscription.cancel();
       receivePort.close();
@@ -526,6 +557,7 @@ class ThermalExporter {
       return await completer.future;
     } finally {
       cancelTimer?.cancel();
+      timeoutTimer.cancel();
       isolate.kill(priority: Isolate.immediate);
       await subscription.cancel();
       receivePort.close();
@@ -902,6 +934,12 @@ String _textSpriteKey(String text, {bool mono = false}) {
 }
 
 void _encodeApngWorker(_ApngExportWork work) {
+  final cancelPort = ReceivePort();
+  var cancelled = false;
+  cancelPort.listen((message) {
+    if (message == 'cancel') cancelled = true;
+  });
+  work.sendPort.send(cancelPort.sendPort);
   try {
     final bytes = work.bytes.materialize().asUint8List();
     final document = const UirReader().read(bytes);
@@ -922,6 +960,10 @@ void _encodeApngWorker(_ApngExportWork work) {
     ]);
     img.Image? animation;
     for (var i = 0; i < document.frames.length; i++) {
+      if (cancelled) {
+        work.sendPort.send(['cancelled']);
+        return;
+      }
       final frameImage = _renderFrameImage(
         document.frames[i].frame,
         work.settings,
@@ -950,6 +992,11 @@ void _encodeApngWorker(_ApngExportWork work) {
       }
     }
 
+    if (cancelled) {
+      work.sendPort.send(['cancelled']);
+      return;
+    }
+
     work.sendPort.send([
       'progress',
       0.82,
@@ -957,6 +1004,10 @@ void _encodeApngWorker(_ApngExportWork work) {
       work.labels.compressingAnimatedPngFrames,
     ]);
     final apng = img.PngEncoder().encode(animation!);
+    if (cancelled) {
+      work.sendPort.send(['cancelled']);
+      return;
+    }
     work.sendPort.send([
       'progress',
       0.93,
@@ -969,6 +1020,8 @@ void _encodeApngWorker(_ApngExportWork work) {
     ]);
   } catch (error, stackTrace) {
     work.sendPort.send(['error', '$error\n$stackTrace']);
+  } finally {
+    cancelPort.close();
   }
 }
 

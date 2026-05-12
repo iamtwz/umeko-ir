@@ -310,6 +310,7 @@ class ThermalController extends Notifier<ThermalState> {
           (data) {
             return findPhotoPayloadStart(file, data) != -1;
           },
+          allowPartialOnTimeout: true,
         );
         final start = findPhotoPayloadStart(file, catBytes);
         if (start != -1) {
@@ -342,27 +343,53 @@ class ThermalController extends Notifier<ThermalState> {
   Future<void> _restartSerialForCommandMode() async {
     _streamHeartbeat?.cancel();
     _streamWriteInFlight = false;
+
+    var reachedCommandMode = false;
     try {
-      await _writeLine('stop_stream');
-    } catch (e) {
-      await _handleSerialWriteFailure(e);
-      rethrow;
-    }
+      try {
+        await _writeLine('stop_stream');
+      } catch (e) {
+        await _handleSerialWriteFailure(e);
+        rethrow;
+      }
 
-    await _serial.disconnect();
-    _parser.reset();
-    state = state.copyWith(
-      connected: false,
-      streaming: false,
-      parserStats: _parser.stats,
-    );
+      try {
+        await _serial.disconnect();
+      } catch (_) {
+        // Disconnect is best-effort; the underlying handle may already be
+        // invalid, but we still want to drop any pending state.
+      }
+      _parser.reset();
+      state = state.copyWith(
+        connected: false,
+        streaming: false,
+        parserStats: _parser.stats,
+      );
 
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    final connected = await _connectWithFreshPort();
-    if (!connected) {
-      throw StateError('Serial port is not available after stopping stream');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      final connected = await _connectWithFreshPort();
+      if (!connected) {
+        throw StateError('Serial port is not available after stopping stream');
+      }
+      state = state.copyWith(connected: true, streaming: false);
+      reachedCommandMode = true;
+    } finally {
+      if (!reachedCommandMode) {
+        // Any partial transition leaves us in a disconnected, non-streaming
+        // state so the UI and heartbeat loop do not observe an inconsistency.
+        _streamHeartbeat?.cancel();
+        _streamWriteInFlight = false;
+        try {
+          await _serial.disconnect();
+        } catch (_) {}
+        _parser.reset();
+        state = state.copyWith(
+          connected: false,
+          streaming: false,
+          parserStats: _parser.stats,
+        );
+      }
     }
-    state = state.copyWith(connected: true, streaming: false);
   }
 
   Future<void> deletePhoto(String filename) async {
@@ -373,6 +400,7 @@ class ThermalController extends Notifier<ThermalState> {
         'rm /$filename',
         const Duration(milliseconds: 800),
         (_) => false,
+        allowPartialOnTimeout: true,
       );
       state = state.copyWith(
         busy: false,
@@ -393,6 +421,7 @@ class ThermalController extends Notifier<ThermalState> {
         'clear_photos',
         const Duration(milliseconds: 1000),
         (_) => false,
+        allowPartialOnTimeout: true,
       );
       state = state.copyWith(busy: false, gallery: const []);
     } catch (e) {
@@ -428,10 +457,16 @@ class ThermalController extends Notifier<ThermalState> {
   Future<Uint8List> _collectCommand(
     String command,
     Duration timeout,
-    bool Function(Uint8List data) done,
-  ) async {
+    bool Function(Uint8List data) done, {
+    bool allowPartialOnTimeout = false,
+  }) async {
     final transaction = _transactionQueue.then(
-      (_) => _runCollectCommand(command, timeout, done),
+      (_) => _runCollectCommand(
+        command,
+        timeout,
+        done,
+        allowPartialOnTimeout: allowPartialOnTimeout,
+      ),
     );
     _transactionQueue = transaction.then<void>((_) {}, onError: (_) {});
     return transaction;
@@ -440,8 +475,9 @@ class ThermalController extends Notifier<ThermalState> {
   Future<Uint8List> _runCollectCommand(
     String command,
     Duration timeout,
-    bool Function(Uint8List data) done,
-  ) async {
+    bool Function(Uint8List data) done, {
+    bool allowPartialOnTimeout = false,
+  }) async {
     _transactionBuffer.clear();
     final completer = Completer<Uint8List>();
     _transactionCompleter = completer;
@@ -460,7 +496,17 @@ class ThermalController extends Notifier<ThermalState> {
     try {
       return await completer.future.timeout(
         timeout,
-        onTimeout: () => Uint8List.fromList(_transactionBuffer),
+        onTimeout: () {
+          if (allowPartialOnTimeout) {
+            return Uint8List.fromList(_transactionBuffer);
+          }
+          throw TimeoutException(
+            'Serial command "$command" timed out after '
+            '${timeout.inMilliseconds}ms '
+            '(received ${_transactionBuffer.length} bytes)',
+            timeout,
+          );
+        },
       );
     } finally {
       timer.cancel();

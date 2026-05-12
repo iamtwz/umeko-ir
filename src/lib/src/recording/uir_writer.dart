@@ -29,6 +29,10 @@ class UirByteWriter {
 
   int get frameCount => _frameCount;
 
+  /// Bytes already buffered for this recording (header + records). The writer
+  /// does not stream to disk, so this also reflects peak memory use.
+  int get byteLength => _bytes.length;
+
   Uint8List finish() {
     _ensureHeader();
     _writeFooter();
