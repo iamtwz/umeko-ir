@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-17
+
 ### Added
 
 - Added local UIR recording for snapshots and multi-frame thermal videos.
