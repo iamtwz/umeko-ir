@@ -287,10 +287,16 @@ class ThermalController extends Notifier<ThermalState> {
       }
       final listBytes = await _collectCommand(
         'ls',
-        const Duration(milliseconds: 3500),
+        const Duration(milliseconds: 8000),
         (data) {
-          return utf8.decode(data, allowMalformed: true).contains('Total:');
+          final text = utf8.decode(data, allowMalformed: true);
+          return text.contains('Total:') ||
+              text.contains('Directory is empty') ||
+              text.contains('Failed to open directory') ||
+              text.contains('is not a directory') ||
+              text.contains('Failed to mount LittleFS');
         },
+        allowPartialOnTimeout: true,
       );
       final files = parseDeviceFileList(
         utf8.decode(listBytes, allowMalformed: true),

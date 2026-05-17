@@ -322,18 +322,25 @@ class ErrorStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const background = Color(0xff7f1d1d);
+    final foreground =
+        ThemeData.estimateBrightnessForColor(background) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
     return Container(
       width: double.infinity,
-      color: const Color(0xff7f1d1d),
+      color: background,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, size: 18),
+          Icon(Icons.error_outline, size: 18, color: foreground),
           const SizedBox(width: 8),
-          Expanded(child: Text(message)),
+          Expanded(
+            child: Text(message, style: TextStyle(color: foreground)),
+          ),
           IconButton(
             onPressed: onClose,
-            icon: const Icon(Icons.close),
+            icon: Icon(Icons.close, color: foreground),
             tooltip: context.l10n.dismiss,
           ),
         ],
