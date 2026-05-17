@@ -7,6 +7,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-17
+
+### Fixed
+
+- Allowed ESP32 device gallery `ls` to use partial output when the listing
+  exceeds the previous 3.5s window and recognized empty/error directory
+  markers so the request no longer hard-times-out.
+- Made the in-app error banner contrast-aware so error text and icons stay
+  readable on both light and dark themes.
+
 ## [1.1.0] - 2026-05-17
 
 ### Added
