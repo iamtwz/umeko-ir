@@ -7,6 +7,44 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Renamed the Debug bottom tab to **Device** — a container that lists
+  device-specific capabilities. Cards grey out when the connected hardware does
+  not advertise the capability (or when nothing is connected).
+- Added **Dual-vision alignment** page under Device for ESP32 dual-vision
+  hardware. Sliders push debounced `set_align` / `set_alpha` over serial,
+  flip toggles use `toggle_vflip` / `toggle_hflip` (parsing `VFLIP:0|1`
+  confirmation), and changes auto-persist to `/align.cfg` on the device.
+  Capability is probed on entry via `get_align\n`; unsupported / disconnected
+  devices see a friendly empty state.
+- Moved the raw TX/RX HEX log into Device > **Serial Debug** sub-page,
+  reachable from the same Device tab.
+
+### Changed
+
+- Serialized stream-control and device commands so rapid tab changes cannot
+  interleave `stream`, `stop_stream`, and calibration traffic.
+- Show camera flips as unknown until the device confirms their state, and
+  disable repeated toggles while confirmation is pending.
+
+### Fixed
+
+- Switch active ESP32 streams to a clean command-mode serial session before
+  reading dual-vision alignment, preventing false unsupported-device results
+  when binary thermal frames obscure the `get_align` response.
+- Preserved confirmed alignment values while editing fusion alpha and merged
+  device-confirmed flip values without stale local drafts masking them.
+- Ignore stale command results after disconnect/reconnect, cancel pending edits
+  before reload/reset, and report missing flip confirmations as errors.
+- Bound serial writes and disconnects with timeouts, keep stale write failures
+  from overwriting an intentional disconnect, and always reset local state when
+  closing the native serial handle fails.
+- Keep unsupported dual-vision cards openable for details and retry, and make
+  the Device capability list scroll safely in constrained windows.
+- Use the same translation, scale, and rotation limits for canvas gestures and
+  fine-adjust sliders.
+
 ## [1.1.1] - 2026-05-17
 
 ### Fixed

@@ -21,6 +21,108 @@ class AppLocalizationsJa extends AppLocalizations {
   String get debug => 'デバッグ';
 
   @override
+  String get device => 'デバイス';
+
+  @override
+  String get deviceCapabilitiesIntro =>
+      'デバイス固有のツール。接続中の機器が対応していない機能はグレー表示されます。';
+
+  @override
+  String get deviceCapabilityProbing => 'デバイス機能を確認中…';
+
+  @override
+  String get deviceCapabilityProbeFailed => 'デバイス機能の確認に失敗しました';
+
+  @override
+  String get dualVisionProbeFailedRetryDetail => 'デバイスから読み込む操作でもう一度お試しください。';
+
+  @override
+  String get deviceCapabilityProbeOnOpen => '開いたときに確認します';
+
+  @override
+  String get deviceCapabilityUnsupported => 'この機器はこの機能に対応していません';
+
+  @override
+  String get deviceNotConnected => 'デバイス未接続';
+
+  @override
+  String get serialDebugSubtitle => '全デバイス共通の TX/RX HEX ログ';
+
+  @override
+  String get serialDebugEmpty => 'シリアル通信はまだありません。';
+
+  @override
+  String get dualVisionAlignment => 'デュアル光位置合わせ';
+
+  @override
+  String get dualVisionAlignmentSubtitle => '可視光カメラを熱センサーに合わせ、融合の透明度を調整';
+
+  @override
+  String get dualVisionConnectFirst => 'デュアル光機器を先に接続してください。';
+
+  @override
+  String get dualVisionUnsupportedDetail =>
+      '位置合わせ機能は ESP32 デュアル光モデルのみ対応。RP2040 サーマル専用モデルには可視光カメラはありません。';
+
+  @override
+  String get dualVisionReadFromDevice => 'デバイスから読み取る';
+
+  @override
+  String get dualVisionHint =>
+      '調整中はデバイス本体の画面を見てください。融合はファームウェア側で行われます。変更は自動保存されます。';
+
+  @override
+  String get dualVisionTranslate => '平行移動';
+
+  @override
+  String get dualVisionScale => 'スケール';
+
+  @override
+  String get dualVisionRotationFusion => '回転と融合';
+
+  @override
+  String get dualVisionCameraOrientation => 'カメラの向き';
+
+  @override
+  String get dualVisionCameraFlipSubtitle => 'カメラの反転を切り替え、/align.cfg に保存します。';
+
+  @override
+  String get dualVisionTx => 'X 平行移動';
+
+  @override
+  String get dualVisionTy => 'Y 平行移動';
+
+  @override
+  String get dualVisionSx => 'X スケール';
+
+  @override
+  String get dualVisionSy => 'Y スケール';
+
+  @override
+  String get dualVisionAngle => '回転';
+
+  @override
+  String get dualVisionFusionAlpha => '融合 α';
+
+  @override
+  String get verticalFlipCamera => '縦反転(カメラ)';
+
+  @override
+  String get horizontalMirrorCamera => '横反転(カメラ)';
+
+  @override
+  String get dualVisionFlipStateUnknown => '現在の状態は不明です';
+
+  @override
+  String get toggle => '切り替え';
+
+  @override
+  String get resetToDefaults => '位置合わせと透明度をリセット';
+
+  @override
+  String get dualVisionFineAdjust => '微調整(スライダー)';
+
+  @override
   String get connected => '接続済み';
 
   @override

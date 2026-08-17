@@ -124,6 +124,204 @@ abstract class AppLocalizations {
   /// **'Debug'**
   String get debug;
 
+  /// No description provided for @device.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get device;
+
+  /// No description provided for @deviceCapabilitiesIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Device-specific tools. Capabilities not advertised by the connected hardware are greyed out.'**
+  String get deviceCapabilitiesIntro;
+
+  /// No description provided for @deviceCapabilityProbing.
+  ///
+  /// In en, this message translates to:
+  /// **'Probing device capability…'**
+  String get deviceCapabilityProbing;
+
+  /// No description provided for @deviceCapabilityProbeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Device capability probe failed'**
+  String get deviceCapabilityProbeFailed;
+
+  /// No description provided for @dualVisionProbeFailedRetryDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Read from device to try again.'**
+  String get dualVisionProbeFailedRetryDetail;
+
+  /// No description provided for @deviceCapabilityProbeOnOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Will probe when opened'**
+  String get deviceCapabilityProbeOnOpen;
+
+  /// No description provided for @deviceCapabilityUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This device does not support this capability'**
+  String get deviceCapabilityUnsupported;
+
+  /// No description provided for @deviceNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'No device connected'**
+  String get deviceNotConnected;
+
+  /// No description provided for @serialDebugSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw TX/RX hex log for any device'**
+  String get serialDebugSubtitle;
+
+  /// No description provided for @serialDebugEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No serial activity yet.'**
+  String get serialDebugEmpty;
+
+  /// No description provided for @dualVisionAlignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Dual-vision alignment'**
+  String get dualVisionAlignment;
+
+  /// No description provided for @dualVisionAlignmentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Align the visible-light camera to the thermal sensor and tune fusion alpha'**
+  String get dualVisionAlignmentSubtitle;
+
+  /// No description provided for @dualVisionConnectFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a dual-vision device first.'**
+  String get dualVisionConnectFirst;
+
+  /// No description provided for @dualVisionUnsupportedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the ESP32 dual-vision hardware exposes alignment. RP2040 thermal-only devices have no visible-light camera.'**
+  String get dualVisionUnsupportedDetail;
+
+  /// No description provided for @dualVisionReadFromDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Read from device'**
+  String get dualVisionReadFromDevice;
+
+  /// No description provided for @dualVisionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the device\'s own LCD while you tune — fusion is rendered on-device. Changes are saved automatically.'**
+  String get dualVisionHint;
+
+  /// No description provided for @dualVisionTranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate'**
+  String get dualVisionTranslate;
+
+  /// No description provided for @dualVisionScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Scale'**
+  String get dualVisionScale;
+
+  /// No description provided for @dualVisionRotationFusion.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotation and fusion'**
+  String get dualVisionRotationFusion;
+
+  /// No description provided for @dualVisionCameraOrientation.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera orientation'**
+  String get dualVisionCameraOrientation;
+
+  /// No description provided for @dualVisionCameraFlipSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggles the camera flip and persists it to /align.cfg.'**
+  String get dualVisionCameraFlipSubtitle;
+
+  /// No description provided for @dualVisionTx.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate X'**
+  String get dualVisionTx;
+
+  /// No description provided for @dualVisionTy.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate Y'**
+  String get dualVisionTy;
+
+  /// No description provided for @dualVisionSx.
+  ///
+  /// In en, this message translates to:
+  /// **'Scale X'**
+  String get dualVisionSx;
+
+  /// No description provided for @dualVisionSy.
+  ///
+  /// In en, this message translates to:
+  /// **'Scale Y'**
+  String get dualVisionSy;
+
+  /// No description provided for @dualVisionAngle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotation'**
+  String get dualVisionAngle;
+
+  /// No description provided for @dualVisionFusionAlpha.
+  ///
+  /// In en, this message translates to:
+  /// **'Fusion alpha'**
+  String get dualVisionFusionAlpha;
+
+  /// No description provided for @verticalFlipCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical flip (camera)'**
+  String get verticalFlipCamera;
+
+  /// No description provided for @horizontalMirrorCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal mirror (camera)'**
+  String get horizontalMirrorCamera;
+
+  /// No description provided for @dualVisionFlipStateUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Current state is unknown'**
+  String get dualVisionFlipStateUnknown;
+
+  /// No description provided for @toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle'**
+  String get toggle;
+
+  /// No description provided for @resetToDefaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset alignment and alpha'**
+  String get resetToDefaults;
+
+  /// No description provided for @dualVisionFineAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine adjust (sliders)'**
+  String get dualVisionFineAdjust;
+
   /// No description provided for @connected.
   ///
   /// In en, this message translates to:

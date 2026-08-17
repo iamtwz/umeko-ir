@@ -21,6 +21,106 @@ class AppLocalizationsZh extends AppLocalizations {
   String get debug => '调试';
 
   @override
+  String get device => '设备';
+
+  @override
+  String get deviceCapabilitiesIntro => '设备相关工具。当前连接的设备不支持的功能会被置灰。';
+
+  @override
+  String get deviceCapabilityProbing => '正在探测设备能力…';
+
+  @override
+  String get deviceCapabilityProbeFailed => '设备能力探测失败';
+
+  @override
+  String get dualVisionProbeFailedRetryDetail => '请使用从设备读取重试。';
+
+  @override
+  String get deviceCapabilityProbeOnOpen => '打开时将探测';
+
+  @override
+  String get deviceCapabilityUnsupported => '当前设备不支持此功能';
+
+  @override
+  String get deviceNotConnected => '未连接设备';
+
+  @override
+  String get serialDebugSubtitle => '适用于任何设备的原始 TX/RX 十六进制日志';
+
+  @override
+  String get serialDebugEmpty => '尚无串口活动。';
+
+  @override
+  String get dualVisionAlignment => '双光对位';
+
+  @override
+  String get dualVisionAlignmentSubtitle => '将可见光摄像头与热成像传感器对齐,并调节融合透明度';
+
+  @override
+  String get dualVisionConnectFirst => '请先连接一台双光设备。';
+
+  @override
+  String get dualVisionUnsupportedDetail =>
+      '只有 ESP32 双光机型支持对位。RP2040 仅热成像机型没有可见光摄像头。';
+
+  @override
+  String get dualVisionReadFromDevice => '从设备读取';
+
+  @override
+  String get dualVisionHint => '调参时请观察设备自身屏幕 — 融合是在固件端渲染的。改动会自动保存。';
+
+  @override
+  String get dualVisionTranslate => '平移';
+
+  @override
+  String get dualVisionScale => '缩放';
+
+  @override
+  String get dualVisionRotationFusion => '旋转与融合';
+
+  @override
+  String get dualVisionCameraOrientation => '摄像头方向';
+
+  @override
+  String get dualVisionCameraFlipSubtitle => '切换摄像头翻转并持久化到 /align.cfg。';
+
+  @override
+  String get dualVisionTx => 'X 平移';
+
+  @override
+  String get dualVisionTy => 'Y 平移';
+
+  @override
+  String get dualVisionSx => 'X 缩放';
+
+  @override
+  String get dualVisionSy => 'Y 缩放';
+
+  @override
+  String get dualVisionAngle => '旋转';
+
+  @override
+  String get dualVisionFusionAlpha => '融合透明度';
+
+  @override
+  String get verticalFlipCamera => '摄像头垂直翻转';
+
+  @override
+  String get horizontalMirrorCamera => '摄像头水平镜像';
+
+  @override
+  String get dualVisionFlipStateUnknown => '当前状态未知';
+
+  @override
+  String get toggle => '切换';
+
+  @override
+  String get resetToDefaults => '重置对齐与透明度';
+
+  @override
+  String get dualVisionFineAdjust => '精细调节(滑块)';
+
+  @override
   String get connected => '已连接';
 
   @override

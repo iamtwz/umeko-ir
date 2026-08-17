@@ -13,6 +13,37 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
   bool _updateCheckStarted = false;
+  // True while we suspended the live stream because the user opened the
+  // Device tab (which is a settings/calibration surface, not a viewer). We
+  // restore the previous streaming state when they leave.
+  bool _streamPausedForDeviceTab = false;
+  Future<void> _tabStreamTransition = Future<void>.value();
+
+  static const int _deviceTabIndex = 2;
+
+  void _selectTab(int value) {
+    if (value == _index) return;
+    final controller = ref.read(thermalControllerProvider.notifier);
+    final wasStreaming = ref.read(thermalControllerProvider).streaming;
+    Future<void> Function()? transition;
+    if (value == _deviceTabIndex && _index != _deviceTabIndex && wasStreaming) {
+      _streamPausedForDeviceTab = true;
+      transition = controller.stopStream;
+    } else if (_index == _deviceTabIndex &&
+        value != _deviceTabIndex &&
+        _streamPausedForDeviceTab) {
+      _streamPausedForDeviceTab = false;
+      transition = controller.startStream;
+    }
+    setState(() => _index = value);
+    if (transition != null) {
+      final operation = transition;
+      _tabStreamTransition = _tabStreamTransition.then(
+        (_) => operation(),
+        onError: (_) => operation(),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +60,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final content = switch (_index) {
       0 => const LivePane(),
       1 => const GalleryPane(),
-      2 => const DebugPane(),
+      2 => const DevicePane(),
       _ => const AppSettingsPane(),
     };
 
@@ -41,8 +72,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             if (wide)
               NavigationRail(
                 selectedIndex: _index,
-                onDestinationSelected: (value) =>
-                    setState(() => _index = value),
+                onDestinationSelected: _selectTab,
                 minWidth: 76,
                 labelType: NavigationRailLabelType.all,
                 leading: const Padding(
@@ -61,9 +91,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                     label: Text(l10n.gallery),
                   ),
                   NavigationRailDestination(
-                    icon: const Icon(Icons.terminal_outlined),
-                    selectedIcon: const Icon(Icons.terminal),
-                    label: Text(l10n.debug),
+                    icon: const Icon(Icons.devices_other_outlined),
+                    selectedIcon: const Icon(Icons.devices_other),
+                    label: Text(l10n.device),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.settings_outlined),
@@ -89,7 +119,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ? null
           : NavigationBar(
               selectedIndex: _index,
-              onDestinationSelected: (value) => setState(() => _index = value),
+              onDestinationSelected: _selectTab,
               destinations: [
                 NavigationDestination(
                   icon: const Icon(Icons.monitor_heart_outlined),
@@ -102,9 +132,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                   label: l10n.gallery,
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.terminal_outlined),
-                  selectedIcon: const Icon(Icons.terminal),
-                  label: l10n.debug,
+                  icon: const Icon(Icons.devices_other_outlined),
+                  selectedIcon: const Icon(Icons.devices_other),
+                  label: l10n.device,
                 ),
                 NavigationDestination(
                   icon: const Icon(Icons.settings_outlined),

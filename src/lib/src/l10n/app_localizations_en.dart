@@ -21,6 +21,112 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debug => 'Debug';
 
   @override
+  String get device => 'Device';
+
+  @override
+  String get deviceCapabilitiesIntro =>
+      'Device-specific tools. Capabilities not advertised by the connected hardware are greyed out.';
+
+  @override
+  String get deviceCapabilityProbing => 'Probing device capability…';
+
+  @override
+  String get deviceCapabilityProbeFailed => 'Device capability probe failed';
+
+  @override
+  String get dualVisionProbeFailedRetryDetail =>
+      'Use Read from device to try again.';
+
+  @override
+  String get deviceCapabilityProbeOnOpen => 'Will probe when opened';
+
+  @override
+  String get deviceCapabilityUnsupported =>
+      'This device does not support this capability';
+
+  @override
+  String get deviceNotConnected => 'No device connected';
+
+  @override
+  String get serialDebugSubtitle => 'Raw TX/RX hex log for any device';
+
+  @override
+  String get serialDebugEmpty => 'No serial activity yet.';
+
+  @override
+  String get dualVisionAlignment => 'Dual-vision alignment';
+
+  @override
+  String get dualVisionAlignmentSubtitle =>
+      'Align the visible-light camera to the thermal sensor and tune fusion alpha';
+
+  @override
+  String get dualVisionConnectFirst => 'Connect a dual-vision device first.';
+
+  @override
+  String get dualVisionUnsupportedDetail =>
+      'Only the ESP32 dual-vision hardware exposes alignment. RP2040 thermal-only devices have no visible-light camera.';
+
+  @override
+  String get dualVisionReadFromDevice => 'Read from device';
+
+  @override
+  String get dualVisionHint =>
+      'Watch the device\'s own LCD while you tune — fusion is rendered on-device. Changes are saved automatically.';
+
+  @override
+  String get dualVisionTranslate => 'Translate';
+
+  @override
+  String get dualVisionScale => 'Scale';
+
+  @override
+  String get dualVisionRotationFusion => 'Rotation and fusion';
+
+  @override
+  String get dualVisionCameraOrientation => 'Camera orientation';
+
+  @override
+  String get dualVisionCameraFlipSubtitle =>
+      'Toggles the camera flip and persists it to /align.cfg.';
+
+  @override
+  String get dualVisionTx => 'Translate X';
+
+  @override
+  String get dualVisionTy => 'Translate Y';
+
+  @override
+  String get dualVisionSx => 'Scale X';
+
+  @override
+  String get dualVisionSy => 'Scale Y';
+
+  @override
+  String get dualVisionAngle => 'Rotation';
+
+  @override
+  String get dualVisionFusionAlpha => 'Fusion alpha';
+
+  @override
+  String get verticalFlipCamera => 'Vertical flip (camera)';
+
+  @override
+  String get horizontalMirrorCamera => 'Horizontal mirror (camera)';
+
+  @override
+  String get dualVisionFlipStateUnknown => 'Current state is unknown';
+
+  @override
+  String get toggle => 'Toggle';
+
+  @override
+  String get resetToDefaults => 'Reset alignment and alpha';
+
+  @override
+  String get dualVisionFineAdjust => 'Fine adjust (sliders)';
+
+  @override
   String get connected => 'Connected';
 
   @override

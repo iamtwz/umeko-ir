@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/device_gallery.dart';
+import '../core/dual_vision.dart';
 import '../core/thermal_frame.dart';
 import '../core/thermal_parser.dart';
 import '../core/thermal_rendering.dart';
@@ -39,6 +40,7 @@ class ThermalState {
     this.galleryTotal = 0,
     this.busy = false,
     this.error,
+    this.dualVision = const DualVisionState(),
   });
 
   final List<SerialPortDescriptor> ports;
@@ -57,6 +59,7 @@ class ThermalState {
   final int galleryTotal;
   final bool busy;
   final String? error;
+  final DualVisionState dualVision;
 
   ThermalState copyWith({
     List<SerialPortDescriptor>? ports,
@@ -75,6 +78,7 @@ class ThermalState {
     int? galleryTotal,
     bool? busy,
     String? error,
+    DualVisionState? dualVision,
     bool clearSelectedPort = false,
     bool clearError = false,
   }) {
@@ -97,12 +101,14 @@ class ThermalState {
       galleryTotal: galleryTotal ?? this.galleryTotal,
       busy: busy ?? this.busy,
       error: clearError ? null : error ?? this.error,
+      dualVision: dualVision ?? this.dualVision,
     );
   }
 }
 
 class ThermalController extends Notifier<ThermalState> {
   static const _debugCapacity = 500;
+  static const _serialIoTimeout = Duration(seconds: 1);
 
   late final SerialAdapter _serial;
   final ThermalParser _parser = ThermalParser();
@@ -111,11 +117,12 @@ class ThermalController extends Notifier<ThermalState> {
   final List<int> _transactionBuffer = [];
   final StreamController<ThermalFrame> _frameController =
       StreamController<ThermalFrame>.broadcast();
-  Future<void> _transactionQueue = Future<void>.value();
+  Future<void> _transportQueue = Future<void>.value();
   final Queue<String> _debugBuffer = Queue<String>();
   Timer? _debugFlushTimer;
   Timer? _streamHeartbeat;
   bool _streamWriteInFlight = false;
+  int _connectionGeneration = 0;
 
   Stream<ThermalFrame> get frameStream => _frameController.stream;
 
@@ -200,28 +207,47 @@ class ThermalController extends Notifier<ThermalState> {
   }
 
   Future<void> disconnect() async {
+    _invalidateConnection('Serial connection closed');
     _streamHeartbeat?.cancel();
     _streamWriteInFlight = false;
-    await _serial.disconnect();
-    _parser.reset();
-    state = state.copyWith(
-      connected: false,
-      streaming: false,
-      parserStats: _parser.stats,
-    );
+    Object? disconnectError;
+    try {
+      await _serial.disconnect().timeout(
+        _serialIoTimeout,
+        onTimeout: () => throw TimeoutException(
+          'Serial disconnect timed out after '
+          '${_serialIoTimeout.inMilliseconds}ms',
+          _serialIoTimeout,
+        ),
+      );
+    } catch (error) {
+      disconnectError = error;
+    } finally {
+      _parser.reset();
+      state = state.copyWith(
+        connected: false,
+        streaming: false,
+        busy: false,
+        galleryLoading: false,
+        parserStats: _parser.stats,
+        error: disconnectError?.toString(),
+        clearError: disconnectError == null,
+        dualVision: const DualVisionState(),
+      );
+    }
   }
 
   Future<void> startStream() async {
     if (!state.connected) return;
-    _transactionCompleter = null;
-    _transactionBuffer.clear();
+    final generation = _connectionGeneration;
     _parser.reset();
     try {
       await _writeLine('stream');
     } catch (e) {
-      await _handleSerialWriteFailure(e);
+      await _handleSerialWriteFailure(e, generation);
       return;
     }
+    if (!_isCurrentConnection(generation)) return;
     _streamHeartbeat?.cancel();
     _streamHeartbeat = Timer.periodic(const Duration(milliseconds: 500), (_) {
       unawaited(_sendStreamHeartbeat());
@@ -234,36 +260,46 @@ class ThermalController extends Notifier<ThermalState> {
   }
 
   Future<void> stopStream() async {
+    final generation = _connectionGeneration;
     _streamHeartbeat?.cancel();
     _streamWriteInFlight = false;
     if (state.connected) {
       try {
         await _writeLine('stop_stream');
       } catch (e) {
-        await _handleSerialWriteFailure(e);
+        await _handleSerialWriteFailure(e, generation);
         return;
       }
     }
+    if (state.connected && !_isCurrentConnection(generation)) return;
     state = state.copyWith(streaming: false);
   }
 
   Future<void> _sendStreamHeartbeat() async {
     if (_streamWriteInFlight || !state.connected || !state.streaming) return;
+    final generation = _connectionGeneration;
     _streamWriteInFlight = true;
     try {
       await _writeLine('stream');
     } catch (e) {
-      await _handleSerialWriteFailure(e);
+      await _handleSerialWriteFailure(e, generation);
     } finally {
-      _streamWriteInFlight = false;
+      if (generation == _connectionGeneration) {
+        _streamWriteInFlight = false;
+      }
     }
   }
 
-  Future<void> _handleSerialWriteFailure(Object error) async {
+  Future<void> _handleSerialWriteFailure(
+    Object error,
+    int expectedGeneration,
+  ) async {
+    if (!_isCurrentConnection(expectedGeneration)) return;
+    _invalidateConnection('Serial write failed');
     _streamHeartbeat?.cancel();
     _streamWriteInFlight = false;
     try {
-      await _serial.disconnect();
+      await _serial.disconnect().timeout(_serialIoTimeout);
     } catch (_) {
       // A broken serial handle can also fail while being closed.
     }
@@ -275,6 +311,7 @@ class ThermalController extends Notifier<ThermalState> {
       galleryLoading: false,
       parserStats: _parser.stats,
       error: error.toString(),
+      dualVision: const DualVisionState(),
     );
   }
 
@@ -338,6 +375,7 @@ class ThermalController extends Notifier<ThermalState> {
         galleryLoading: false,
       );
     } catch (e) {
+      if (e is _ConnectionChangedException) return;
       state = state.copyWith(
         busy: false,
         galleryLoading: false,
@@ -347,6 +385,7 @@ class ThermalController extends Notifier<ThermalState> {
   }
 
   Future<void> _restartSerialForCommandMode() async {
+    final generation = _connectionGeneration;
     _streamHeartbeat?.cancel();
     _streamWriteInFlight = false;
 
@@ -355,11 +394,15 @@ class ThermalController extends Notifier<ThermalState> {
       try {
         await _writeLine('stop_stream');
       } catch (e) {
-        await _handleSerialWriteFailure(e);
+        if (!_isCurrentConnection(generation)) {
+          throw const _ConnectionChangedException('Connection changed');
+        }
+        await _handleSerialWriteFailure(e, generation);
         rethrow;
       }
 
       try {
+        _invalidateConnection('Restarting serial command mode');
         await _serial.disconnect();
       } catch (_) {
         // Disconnect is best-effort; the underlying handle may already be
@@ -415,6 +458,7 @@ class ThermalController extends Notifier<ThermalState> {
             .toList(),
       );
     } catch (e) {
+      if (e is _ConnectionChangedException) return;
       state = state.copyWith(busy: false, error: e.toString());
     }
   }
@@ -431,6 +475,7 @@ class ThermalController extends Notifier<ThermalState> {
       );
       state = state.copyWith(busy: false, gallery: const []);
     } catch (e) {
+      if (e is _ConnectionChangedException) return;
       state = state.copyWith(busy: false, error: e.toString());
     }
   }
@@ -454,10 +499,229 @@ class ThermalController extends Notifier<ThermalState> {
     state = state.copyWith(clearError: true);
   }
 
+  // ========================= Dual-vision (ESP32 only) =========================
+
+  /// Probe the device for dual-vision support by sending `get_align\n` and
+  /// looking for an `ALIGN ...` reply. Updates `state.dualVision`.
+  ///
+  /// If streaming is active, first switch to the same clean command-mode
+  /// serial session used by gallery reads. Real ESP32 devices can otherwise
+  /// bury or drop the short text response among queued binary frames.
+  Future<void> probeDualVision() async {
+    if (!state.connected) {
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(
+          capability: DualVisionCapability.unknown,
+          clearError: true,
+        ),
+      );
+      return;
+    }
+    state = state.copyWith(
+      dualVision: state.dualVision.copyWith(
+        capability: DualVisionCapability.probing,
+        clearError: true,
+      ),
+    );
+    int? probeGeneration;
+    try {
+      if (state.streaming) {
+        await _restartSerialForCommandMode();
+      }
+      if (!state.connected) {
+        throw StateError('Serial connection closed before capability probe');
+      }
+      probeGeneration = _connectionGeneration;
+      final bytes = await _collectCommand(
+        'get_align',
+        const Duration(milliseconds: 1500),
+        (data) {
+          final text = utf8.decode(data, allowMalformed: true);
+          return AlignParams.tryParseResponse(text) != null;
+        },
+        allowPartialOnTimeout: true,
+        terminator: '\n',
+      );
+      final text = utf8.decode(bytes, allowMalformed: true);
+      final params = AlignParams.tryParseResponse(text);
+      if (!_isCurrentConnection(probeGeneration)) return;
+      if (params == null) {
+        state = state.copyWith(
+          dualVision: state.dualVision.copyWith(
+            capability: DualVisionCapability.unsupported,
+          ),
+        );
+      } else {
+        state = state.copyWith(
+          dualVision: state.dualVision.copyWith(
+            capability: DualVisionCapability.supported,
+            params: params,
+            clearError: true,
+          ),
+        );
+      }
+    } catch (e) {
+      if (probeGeneration != null && probeGeneration != _connectionGeneration) {
+        return;
+      }
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(
+          capability: DualVisionCapability.error,
+          lastError: e.toString(),
+        ),
+      );
+    }
+  }
+
+  /// Send the affine portion (`set_align tx ty sx sy ang\n`) and update local
+  /// state. Auto-saves to `/align.cfg` on the device.
+  Future<void> writeAlignAffine(AlignParams desired) async {
+    if (!_dualVisionReady) return;
+    final generation = _connectionGeneration;
+    try {
+      await _writeLine(desired.formatSetAlign());
+      if (!_isCurrentConnection(generation)) return;
+      final current = state.dualVision.params ?? AlignParams.defaults;
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(
+          params: current.copyWith(
+            tx: desired.tx,
+            ty: desired.ty,
+            sx: desired.sx,
+            sy: desired.sy,
+            ang: desired.ang,
+          ),
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      if (!_isCurrentConnection(generation)) return;
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(lastError: e.toString()),
+      );
+    }
+  }
+
+  /// Send `set_alpha <0-255>\n`. Auto-saves on device.
+  Future<void> writeFusionAlpha(int alpha) async {
+    if (!_dualVisionReady) return;
+    final generation = _connectionGeneration;
+    final clamped = alpha.clamp(0, 255);
+    try {
+      await _writeLine('set_alpha $clamped');
+      if (!_isCurrentConnection(generation)) return;
+      final current = state.dualVision.params ?? AlignParams.defaults;
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(
+          params: current.copyWith(fusionAlpha: clamped),
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      if (!_isCurrentConnection(generation)) return;
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(lastError: e.toString()),
+      );
+    }
+  }
+
+  /// Toggle the camera vertical flip on the device. Persists to `/align.cfg`.
+  /// Parses the firmware reply `VFLIP:0|1` to confirm the new value.
+  Future<void> toggleCameraVflip() async {
+    await _toggleFlip(
+      command: 'toggle_vflip',
+      replyPrefix: 'VFLIP:',
+      apply: (params, v) => params.copyWith(vflip: v),
+    );
+  }
+
+  /// Toggle the camera horizontal mirror on the device.
+  Future<void> toggleCameraHflip() async {
+    await _toggleFlip(
+      command: 'toggle_hflip',
+      replyPrefix: 'HFLIP:',
+      apply: (params, v) => params.copyWith(hflip: v),
+    );
+  }
+
+  /// Revert affine alignment and fusion alpha to firmware defaults.
+  /// Camera orientation is left unchanged because the protocol only exposes
+  /// toggle commands and its initial state may be unknown.
+  Future<void> resetDualVisionToDefaults() async {
+    if (!_dualVisionReady) return;
+    await writeAlignAffine(AlignParams.defaults);
+    await writeFusionAlpha(AlignParams.defaults.fusionAlpha);
+  }
+
+  bool get _dualVisionReady => state.connected && state.dualVision.isSupported;
+
+  Future<void> _toggleFlip({
+    required String command,
+    required String replyPrefix,
+    required AlignParams Function(AlignParams params, bool value) apply,
+  }) async {
+    if (!_dualVisionReady) return;
+    final generation = _connectionGeneration;
+    final responsePattern = RegExp('${RegExp.escape(replyPrefix)}([01])');
+    try {
+      final bytes = await _collectCommand(
+        command,
+        const Duration(milliseconds: 800),
+        (data) {
+          final text = utf8.decode(data, allowMalformed: true);
+          return responsePattern.hasMatch(text);
+        },
+        terminator: '\n',
+      );
+      if (!_isCurrentConnection(generation)) return;
+      final text = utf8.decode(bytes, allowMalformed: true);
+      final match = responsePattern.firstMatch(text);
+      if (match == null) {
+        throw FormatException('Invalid response for $command: $text');
+      }
+      final value = match.group(1) == '1';
+      final current = state.dualVision.params ?? AlignParams.defaults;
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(
+          params: apply(current, value),
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      if (!_isCurrentConnection(generation)) return;
+      state = state.copyWith(
+        dualVision: state.dualVision.copyWith(lastError: e.toString()),
+      );
+    }
+  }
+
+  // ============================ Transport helpers ============================
+
   Future<void> _writeLine(String command) {
+    final generation = _connectionGeneration;
+    return _enqueueTransport(() {
+      if (!_isCurrentConnection(generation)) return Future<void>.value();
+      return _writeLineNow(command);
+    });
+  }
+
+  Future<void> _writeLineNow(String command) {
     final bytes = Uint8List.fromList(utf8.encode('$command\n'));
     _appendDebugBytes('TX', bytes);
-    return _serial.write(bytes);
+    return _writeSerial(bytes, command);
+  }
+
+  Future<void> _writeSerial(Uint8List bytes, String command) {
+    return _serial
+        .write(bytes)
+        .timeout(
+          _serialIoTimeout,
+          onTimeout: () => throw TimeoutException(
+            'Serial write "$command" timed out after '
+            '${_serialIoTimeout.inMilliseconds}ms',
+            _serialIoTimeout,
+          ),
+        );
   }
 
   Future<Uint8List> _collectCommand(
@@ -465,17 +729,27 @@ class ThermalController extends Notifier<ThermalState> {
     Duration timeout,
     bool Function(Uint8List data) done, {
     bool allowPartialOnTimeout = false,
+    String terminator = '\r\n',
   }) async {
-    final transaction = _transactionQueue.then(
-      (_) => _runCollectCommand(
+    final generation = _connectionGeneration;
+    return _enqueueTransport(() {
+      if (!_isCurrentConnection(generation)) {
+        throw const _ConnectionChangedException('Connection changed');
+      }
+      return _runCollectCommand(
         command,
         timeout,
         done,
         allowPartialOnTimeout: allowPartialOnTimeout,
-      ),
-    );
-    _transactionQueue = transaction.then<void>((_) {}, onError: (_) {});
-    return transaction;
+        terminator: terminator,
+      );
+    });
+  }
+
+  Future<T> _enqueueTransport<T>(Future<T> Function() operation) {
+    final result = _transportQueue.then((_) => operation());
+    _transportQueue = result.then<void>((_) {}, onError: (_) {});
+    return result;
   }
 
   Future<Uint8List> _runCollectCommand(
@@ -483,23 +757,24 @@ class ThermalController extends Notifier<ThermalState> {
     Duration timeout,
     bool Function(Uint8List data) done, {
     bool allowPartialOnTimeout = false,
+    String terminator = '\r\n',
   }) async {
     _transactionBuffer.clear();
     final completer = Completer<Uint8List>();
     _transactionCompleter = completer;
-    final commandBytes = Uint8List.fromList(utf8.encode('$command\r\n'));
+    final commandBytes = Uint8List.fromList(utf8.encode('$command$terminator'));
     _appendDebugBytes('TX', commandBytes);
-    await _serial.write(commandBytes);
-
-    final timer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
-      final bytes = Uint8List.fromList(_transactionBuffer);
-      if (done(bytes)) {
-        timer.cancel();
-        if (!completer.isCompleted) completer.complete(bytes);
-      }
-    });
+    Timer? timer;
 
     try {
+      await _writeSerial(commandBytes, command);
+      timer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
+        final bytes = Uint8List.fromList(_transactionBuffer);
+        if (done(bytes)) {
+          timer.cancel();
+          if (!completer.isCompleted) completer.complete(bytes);
+        }
+      });
       return await completer.future.timeout(
         timeout,
         onTimeout: () {
@@ -515,9 +790,11 @@ class ThermalController extends Notifier<ThermalState> {
         },
       );
     } finally {
-      timer.cancel();
-      _transactionCompleter = null;
-      _transactionBuffer.clear();
+      timer?.cancel();
+      if (identical(_transactionCompleter, completer)) {
+        _transactionCompleter = null;
+        _transactionBuffer.clear();
+      }
     }
   }
 
@@ -589,7 +866,22 @@ class ThermalController extends Notifier<ThermalState> {
       return false;
     }
     await _serial.connect(port, SerialOptions(baudRate: state.baudRate));
+    _connectionGeneration += 1;
     return true;
+  }
+
+  bool _isCurrentConnection(int generation) {
+    return state.connected && generation == _connectionGeneration;
+  }
+
+  void _invalidateConnection(String reason) {
+    _connectionGeneration += 1;
+    final transaction = _transactionCompleter;
+    if (transaction != null && !transaction.isCompleted) {
+      transaction.completeError(_ConnectionChangedException(reason));
+    }
+    _transactionCompleter = null;
+    _transactionBuffer.clear();
   }
 
   SerialPortDescriptor? _resolvePreferredPort(
@@ -601,6 +893,15 @@ class ThermalController extends Notifier<ThermalState> {
     if (ports.length == 1 && ports.single.virtual) return ports.single;
     return null;
   }
+}
+
+class _ConnectionChangedException implements Exception {
+  const _ConnectionChangedException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 bool _isPreferredPort(SerialPortDescriptor port) {
