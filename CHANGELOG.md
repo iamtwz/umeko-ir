@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-17
+
 ### Added
 
 - Renamed the Debug bottom tab to **Device** — a container that lists
