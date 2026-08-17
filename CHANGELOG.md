@@ -23,6 +23,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- Replaced Flutter template application identifiers with
+  `com.jimmytianlabs.umekoir` for release builds and the `.dev` suffix for
+  development builds across supported platforms.
 - Serialized stream-control and device commands so rapid tab changes cannot
   interleave `stream`, `stop_stream`, and calibration traffic.
 - Show camera flips as unknown until the device confirms their state, and

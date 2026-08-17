@@ -1,6 +1,7 @@
 {
     "name": "Umeko IR",
     "short_name": "Umeko IR",
+    "id": "com.jimmytianlabs.umekoir",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",

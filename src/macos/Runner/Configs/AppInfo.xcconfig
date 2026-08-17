@@ -8,7 +8,7 @@
 PRODUCT_NAME = Umeko IR
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.umekoIrFlutter
+PRODUCT_BUNDLE_IDENTIFIER = com.jimmytianlabs.umekoir
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Jimmy Tian Labs. All rights reserved.

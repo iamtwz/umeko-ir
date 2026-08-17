@@ -12,6 +12,12 @@ enum BuildChannel {
   }
 }
 
+const releaseApplicationId = 'com.jimmytianlabs.umekoir';
+
+String applicationIdForChannel({BuildChannel channel = buildChannel}) {
+  return channel.isDev ? '$releaseApplicationId.dev' : releaseApplicationId;
+}
+
 const _buildChannelName = String.fromEnvironment(
   'UMEKO_BUILD_CHANNEL',
   defaultValue: 'release',

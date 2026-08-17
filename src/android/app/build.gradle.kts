@@ -46,11 +46,11 @@ val buildChannel = (
 ).lowercase()
 val isDevBuild = buildChannel == "dev"
 val appDisplayName = if (isDevBuild) "Umeko IR Dev" else "Umeko IR"
-val applicationIdBase = "com.example.umeko_ir_flutter"
+val applicationIdBase = "com.jimmytianlabs.umekoir"
 val canUseReleaseSigning = hasReleaseSigning && !isDevBuild
 
 android {
-    namespace = "com.example.umeko_ir_flutter"
+    namespace = applicationIdBase
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

@@ -6,6 +6,7 @@ void main() {
     expect(buildChannel, BuildChannel.release);
     expect(appDisplayName('Umeko IR'), 'Umeko IR');
     expect(appVersionLabel('1.0.5'), '1.0.5');
+    expect(applicationIdForChannel(), 'com.jimmytianlabs.umekoir');
   });
 
   test('dev channel labels are visibly distinct', () {
@@ -15,5 +16,9 @@ void main() {
       'Umeko IR Dev',
     );
     expect(appVersionLabel('1.0.5', channel: BuildChannel.dev), '1.0.5 (Dev)');
+    expect(
+      applicationIdForChannel(channel: BuildChannel.dev),
+      'com.jimmytianlabs.umekoir.dev',
+    );
   });
 }

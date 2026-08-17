@@ -1,4 +1,4 @@
-package com.example.umeko_ir_flutter
+package com.jimmytianlabs.umekoir
 
 import io.flutter.embedding.android.FlutterActivity
 

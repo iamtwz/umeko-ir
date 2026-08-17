@@ -101,22 +101,25 @@ jobs:
           dart_define="--dart-define=UMEKO_BUILD_CHANNEL=${{ steps.build-channel.outputs.channel }}"
           case "${{ matrix.target }}" in
             macos)
-              flutter build macos --release "$dart_define"
               if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
-                plutil -replace CFBundleDisplayName -string "Umeko IR Dev" "build/macos/Build/Products/Release/Umeko IR.app/Contents/Info.plist"
-                plutil -replace CFBundleName -string "Umeko IR Dev" "build/macos/Build/Products/Release/Umeko IR.app/Contents/Info.plist"
-                mv "build/macos/Build/Products/Release/Umeko IR.app" "build/macos/Build/Products/Release/Umeko IR Dev.app"
+                sed -i '' \
+                  -e 's/^PRODUCT_NAME = Umeko IR$/PRODUCT_NAME = Umeko IR Dev/' \
+                  -e 's/^PRODUCT_BUNDLE_IDENTIFIER = com.jimmytianlabs.umekoir$/PRODUCT_BUNDLE_IDENTIFIER = com.jimmytianlabs.umekoir.dev/' \
+                  macos/Runner/Configs/AppInfo.xcconfig
               fi
+              flutter build macos --release "$dart_define"
               ;;
             linux)
               if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
                 sed -i 's/"Umeko IR"/"Umeko IR Dev"/g' linux/runner/my_application.cc
+                sed -i 's/com.jimmytianlabs.umekoir/com.jimmytianlabs.umekoir.dev/' linux/CMakeLists.txt
               fi
               flutter build linux --release "$dart_define"
               ;;
             windows)
               if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
                 sed -i 's/L"Umeko IR"/L"Umeko IR Dev"/g' windows/runner/main.cpp
+                sed -i 's/"Umeko IR"/"Umeko IR Dev"/g' windows/runner/Runner.rc
               fi
               flutter build windows --release "$dart_define"
               ;;
@@ -124,7 +127,7 @@ jobs:
               flutter build web --release "$dart_define"
               if [[ "${{ steps.build-channel.outputs.channel }}" == "dev" ]]; then
                 sed -i 's/>Umeko IR</>Umeko IR Dev</g; s/content="Umeko IR"/content="Umeko IR Dev"/g' build/web/index.html
-                sed -i 's/"name": "Umeko IR"/"name": "Umeko IR Dev"/; s/"short_name": "Umeko IR"/"short_name": "Umeko IR Dev"/' build/web/manifest.json
+                sed -i 's/"name": "Umeko IR"/"name": "Umeko IR Dev"/; s/"short_name": "Umeko IR"/"short_name": "Umeko IR Dev"/; s/com.jimmytianlabs.umekoir/com.jimmytianlabs.umekoir.dev/' build/web/manifest.json
               fi
               ;;
           esac

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "umeko_ir_flutter" "\0"
+            VALUE "CompanyName", "Jimmy Tian Labs" "\0"
+            VALUE "FileDescription", "Umeko IR" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "umeko_ir_flutter" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Jimmy Tian Labs. All rights reserved." "\0"
             VALUE "OriginalFilename", "umeko_ir_flutter.exe" "\0"
-            VALUE "ProductName", "umeko_ir_flutter" "\0"
+            VALUE "ProductName", "Umeko IR" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
