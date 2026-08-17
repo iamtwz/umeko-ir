@@ -71,24 +71,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dualVisionReadFromDevice => 'Read from device';
 
   @override
-  String get dualVisionHint =>
-      'Watch the device\'s own LCD while you tune — fusion is rendered on-device. Changes are saved automatically.';
-
-  @override
   String get dualVisionTranslate => 'Translate';
 
   @override
   String get dualVisionScale => 'Scale';
 
   @override
-  String get dualVisionRotationFusion => 'Rotation and fusion';
-
-  @override
   String get dualVisionCameraOrientation => 'Camera orientation';
 
   @override
   String get dualVisionCameraFlipSubtitle =>
-      'Toggles the camera flip and persists it to /align.cfg.';
+      'Secondary controls for the visible-light camera';
+
+  @override
+  String get dualVisionAlignmentControls => 'Alignment';
+
+  @override
+  String get dualVisionPosition => 'Position';
+
+  @override
+  String get dualVisionNudgeHint => 'One pixel per tap';
+
+  @override
+  String get dualVisionUniformScale => 'Uniform scale';
+
+  @override
+  String get dualVisionScaleLinked => 'X and Y scale are linked';
+
+  @override
+  String get dualVisionScaleUnlinked =>
+      'X and Y scale can be adjusted independently';
+
+  @override
+  String get dualVisionQuickAdjust => 'Quick adjust';
+
+  @override
+  String get dualVisionQuickAdjustSubtitle =>
+      'Continuous sliders for larger changes';
+
+  @override
+  String get dualVisionCanvasHint =>
+      'Guide only — watch the device display for the real fusion';
+
+  @override
+  String get dualVisionGestureHint =>
+      'Drag to move · corners scale · top handle rotates';
+
+  @override
+  String get dualVisionCameraFrame => 'Camera frame';
+
+  @override
+  String get dualVisionThermalArea => 'Thermal area';
+
+  @override
+  String get dualVisionDefaultPosition => 'Default position';
+
+  @override
+  String get dualVisionAdjustments => 'Calibration controls';
+
+  @override
+  String get dualVisionRetry => 'Try again';
+
+  @override
+  String get dualVisionReady => 'Ready';
+
+  @override
+  String get dualVisionSyncing => 'Syncing…';
+
+  @override
+  String get dualVisionSaved => 'Saved';
+
+  @override
+  String get dualVisionSyncFailed => 'Sync failed';
+
+  @override
+  String get dualVisionResetTitle => 'Reset alignment?';
+
+  @override
+  String get dualVisionResetMessage =>
+      'Position, scale, rotation, and fusion intensity will be restored to their defaults. Camera orientation will not change.';
+
+  @override
+  String get dualVisionResetAction => 'Reset';
 
   @override
   String get dualVisionTx => 'Translate X';
@@ -122,9 +186,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resetToDefaults => 'Reset alignment and alpha';
-
-  @override
-  String get dualVisionFineAdjust => 'Fine adjust (sliders)';
 
   @override
   String get connected => 'Connected';

@@ -214,12 +214,6 @@ abstract class AppLocalizations {
   /// **'Read from device'**
   String get dualVisionReadFromDevice;
 
-  /// No description provided for @dualVisionHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Watch the device\'s own LCD while you tune — fusion is rendered on-device. Changes are saved automatically.'**
-  String get dualVisionHint;
-
   /// No description provided for @dualVisionTranslate.
   ///
   /// In en, this message translates to:
@@ -232,12 +226,6 @@ abstract class AppLocalizations {
   /// **'Scale'**
   String get dualVisionScale;
 
-  /// No description provided for @dualVisionRotationFusion.
-  ///
-  /// In en, this message translates to:
-  /// **'Rotation and fusion'**
-  String get dualVisionRotationFusion;
-
   /// No description provided for @dualVisionCameraOrientation.
   ///
   /// In en, this message translates to:
@@ -247,8 +235,140 @@ abstract class AppLocalizations {
   /// No description provided for @dualVisionCameraFlipSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Toggles the camera flip and persists it to /align.cfg.'**
+  /// **'Secondary controls for the visible-light camera'**
   String get dualVisionCameraFlipSubtitle;
+
+  /// No description provided for @dualVisionAlignmentControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Alignment'**
+  String get dualVisionAlignmentControls;
+
+  /// No description provided for @dualVisionPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get dualVisionPosition;
+
+  /// No description provided for @dualVisionNudgeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One pixel per tap'**
+  String get dualVisionNudgeHint;
+
+  /// No description provided for @dualVisionUniformScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Uniform scale'**
+  String get dualVisionUniformScale;
+
+  /// No description provided for @dualVisionScaleLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'X and Y scale are linked'**
+  String get dualVisionScaleLinked;
+
+  /// No description provided for @dualVisionScaleUnlinked.
+  ///
+  /// In en, this message translates to:
+  /// **'X and Y scale can be adjusted independently'**
+  String get dualVisionScaleUnlinked;
+
+  /// No description provided for @dualVisionQuickAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick adjust'**
+  String get dualVisionQuickAdjust;
+
+  /// No description provided for @dualVisionQuickAdjustSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuous sliders for larger changes'**
+  String get dualVisionQuickAdjustSubtitle;
+
+  /// No description provided for @dualVisionCanvasHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide only — watch the device display for the real fusion'**
+  String get dualVisionCanvasHint;
+
+  /// No description provided for @dualVisionGestureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to move · corners scale · top handle rotates'**
+  String get dualVisionGestureHint;
+
+  /// No description provided for @dualVisionCameraFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera frame'**
+  String get dualVisionCameraFrame;
+
+  /// No description provided for @dualVisionThermalArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Thermal area'**
+  String get dualVisionThermalArea;
+
+  /// No description provided for @dualVisionDefaultPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Default position'**
+  String get dualVisionDefaultPosition;
+
+  /// No description provided for @dualVisionAdjustments.
+  ///
+  /// In en, this message translates to:
+  /// **'Calibration controls'**
+  String get dualVisionAdjustments;
+
+  /// No description provided for @dualVisionRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get dualVisionRetry;
+
+  /// No description provided for @dualVisionReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get dualVisionReady;
+
+  /// No description provided for @dualVisionSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get dualVisionSyncing;
+
+  /// No description provided for @dualVisionSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get dualVisionSaved;
+
+  /// No description provided for @dualVisionSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed'**
+  String get dualVisionSyncFailed;
+
+  /// No description provided for @dualVisionResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset alignment?'**
+  String get dualVisionResetTitle;
+
+  /// No description provided for @dualVisionResetMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Position, scale, rotation, and fusion intensity will be restored to their defaults. Camera orientation will not change.'**
+  String get dualVisionResetMessage;
+
+  /// No description provided for @dualVisionResetAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get dualVisionResetAction;
 
   /// No description provided for @dualVisionTx.
   ///
@@ -315,12 +435,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset alignment and alpha'**
   String get resetToDefaults;
-
-  /// No description provided for @dualVisionFineAdjust.
-  ///
-  /// In en, this message translates to:
-  /// **'Fine adjust (sliders)'**
-  String get dualVisionFineAdjust;
 
   /// No description provided for @connected.
   ///

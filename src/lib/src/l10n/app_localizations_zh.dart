@@ -67,22 +67,82 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dualVisionReadFromDevice => '从设备读取';
 
   @override
-  String get dualVisionHint => '调参时请观察设备自身屏幕 — 融合是在固件端渲染的。改动会自动保存。';
-
-  @override
   String get dualVisionTranslate => '平移';
 
   @override
   String get dualVisionScale => '缩放';
 
   @override
-  String get dualVisionRotationFusion => '旋转与融合';
-
-  @override
   String get dualVisionCameraOrientation => '摄像头方向';
 
   @override
-  String get dualVisionCameraFlipSubtitle => '切换摄像头翻转并持久化到 /align.cfg。';
+  String get dualVisionCameraFlipSubtitle => '可见光摄像头的次要方向设置';
+
+  @override
+  String get dualVisionAlignmentControls => '对位调节';
+
+  @override
+  String get dualVisionPosition => '位置';
+
+  @override
+  String get dualVisionNudgeHint => '每次移动 1 像素';
+
+  @override
+  String get dualVisionUniformScale => '等比缩放';
+
+  @override
+  String get dualVisionScaleLinked => 'X 与 Y 缩放已联动';
+
+  @override
+  String get dualVisionScaleUnlinked => 'X 与 Y 缩放可独立调节';
+
+  @override
+  String get dualVisionQuickAdjust => '快速调节';
+
+  @override
+  String get dualVisionQuickAdjustSubtitle => '使用连续滑块进行大幅调整';
+
+  @override
+  String get dualVisionCanvasHint => '此处仅为示意，请观察设备屏幕确认实际融合效果';
+
+  @override
+  String get dualVisionGestureHint => '拖动平移 · 拖角缩放 · 拖顶部圆点旋转';
+
+  @override
+  String get dualVisionCameraFrame => '摄像头视场';
+
+  @override
+  String get dualVisionThermalArea => '热成像区域';
+
+  @override
+  String get dualVisionDefaultPosition => '默认位置';
+
+  @override
+  String get dualVisionAdjustments => '校准控制';
+
+  @override
+  String get dualVisionRetry => '重试';
+
+  @override
+  String get dualVisionReady => '就绪';
+
+  @override
+  String get dualVisionSyncing => '正在同步…';
+
+  @override
+  String get dualVisionSaved => '已保存';
+
+  @override
+  String get dualVisionSyncFailed => '同步失败';
+
+  @override
+  String get dualVisionResetTitle => '重置双光对位？';
+
+  @override
+  String get dualVisionResetMessage => '位置、缩放、旋转和融合强度将恢复默认值，摄像头方向不会改变。';
+
+  @override
+  String get dualVisionResetAction => '重置';
 
   @override
   String get dualVisionTx => 'X 平移';
@@ -116,9 +176,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resetToDefaults => '重置对齐与透明度';
-
-  @override
-  String get dualVisionFineAdjust => '精细调节(滑块)';
 
   @override
   String get connected => '已连接';

@@ -23,6 +23,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- Redesigned the dual-vision calibration page as a responsive workbench with
+  a clearer camera/thermal stage, percentage-based fusion control, one-pixel
+  nudging, linked scale, numeric steppers, compact parameter readouts, and a
+  draggable control sheet on phones. Alignment writes now show syncing/saved
+  feedback, retries are available in capability error states, and resetting
+  calibration requires confirmation.
 - Replaced Flutter template application identifiers with
   `com.jimmytianlabs.umekoir` for release builds and the `.dev` suffix for
   development builds across supported platforms.

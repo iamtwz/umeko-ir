@@ -68,23 +68,83 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dualVisionReadFromDevice => 'デバイスから読み取る';
 
   @override
-  String get dualVisionHint =>
-      '調整中はデバイス本体の画面を見てください。融合はファームウェア側で行われます。変更は自動保存されます。';
-
-  @override
   String get dualVisionTranslate => '平行移動';
 
   @override
   String get dualVisionScale => 'スケール';
 
   @override
-  String get dualVisionRotationFusion => '回転と融合';
-
-  @override
   String get dualVisionCameraOrientation => 'カメラの向き';
 
   @override
-  String get dualVisionCameraFlipSubtitle => 'カメラの反転を切り替え、/align.cfg に保存します。';
+  String get dualVisionCameraFlipSubtitle => '可視光カメラの補助的な向き設定';
+
+  @override
+  String get dualVisionAlignmentControls => '位置合わせ';
+
+  @override
+  String get dualVisionPosition => '位置';
+
+  @override
+  String get dualVisionNudgeHint => '1 回につき 1 ピクセル移動';
+
+  @override
+  String get dualVisionUniformScale => '縦横比を保持';
+
+  @override
+  String get dualVisionScaleLinked => 'X と Y のスケールを連動';
+
+  @override
+  String get dualVisionScaleUnlinked => 'X と Y のスケールを個別に調整';
+
+  @override
+  String get dualVisionQuickAdjust => 'クイック調整';
+
+  @override
+  String get dualVisionQuickAdjustSubtitle => 'スライダーで大きく連続調整';
+
+  @override
+  String get dualVisionCanvasHint => 'ガイド表示です。実際の融合結果はデバイス画面で確認してください';
+
+  @override
+  String get dualVisionGestureHint => 'ドラッグで移動 · 角で拡縮 · 上のハンドルで回転';
+
+  @override
+  String get dualVisionCameraFrame => 'カメラ画角';
+
+  @override
+  String get dualVisionThermalArea => 'サーマル領域';
+
+  @override
+  String get dualVisionDefaultPosition => '初期位置';
+
+  @override
+  String get dualVisionAdjustments => 'キャリブレーション操作';
+
+  @override
+  String get dualVisionRetry => '再試行';
+
+  @override
+  String get dualVisionReady => '準備完了';
+
+  @override
+  String get dualVisionSyncing => '同期中…';
+
+  @override
+  String get dualVisionSaved => '保存済み';
+
+  @override
+  String get dualVisionSyncFailed => '同期に失敗';
+
+  @override
+  String get dualVisionResetTitle => '位置合わせをリセットしますか？';
+
+  @override
+  String get dualVisionResetMessage =>
+      '位置、スケール、回転、融合強度を初期値に戻します。カメラの向きは変更されません。';
+
+  @override
+  String get dualVisionResetAction => 'リセット';
 
   @override
   String get dualVisionTx => 'X 平行移動';
@@ -118,9 +178,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get resetToDefaults => '位置合わせと透明度をリセット';
-
-  @override
-  String get dualVisionFineAdjust => '微調整(スライダー)';
 
   @override
   String get connected => '接続済み';
