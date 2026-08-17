@@ -36,7 +36,14 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  minimum_macos_version = Gem::Version.new('10.15')
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    target.build_configurations.each do |config|
+      configured_version = config.build_settings['MACOSX_DEPLOYMENT_TARGET']
+      if configured_version.nil? || Gem::Version.new(configured_version) < minimum_macos_version
+        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = minimum_macos_version.to_s
+      end
+    end
   end
 end
